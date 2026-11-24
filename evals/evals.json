@@ -1,0 +1,34 @@
+{
+  "skill_name": "guided-review",
+  "evals": [
+    {
+      "id": 1,
+      "name": "page-from-frozen-research",
+      "prompt": "Read the skill at {skill}/SKILL.md and follow it for this task. The case is in {case}: read brief.md there first. Your output folder is {out}. If you start a server, use port {port}. When you finish, reply with one short paragraph: what you built, and anything you could not do.",
+      "baseline_prompt": "The case is in {case}: read brief.md there first and do what the reviewer asks. Your output folder is {out}. If you start a server, use port {port}. When you finish, reply with one short paragraph: what you built, and anything you could not do.",
+      "expected_output": "A review page at {out}/index.html, with its pictures beside it, that a reviewer can answer in about the budget the brief gives: a few stops that tell first and ask second, the other findings in a list, plans listed and not asked.",
+      "files": [],
+      "case": "A case folder holds the research already done, so a run spends its time on the page and not on reading the work: brief.md (the request, the level and budget already settled, and the rule to read nothing outside the folder), notes/ (what was asked, what was made, what was checked, where the work differs from the request, loose ends), excerpts.md (raw evidence with sources) and evidence/ (pictures with a README). No case ships in this repo yet; the first one is private.",
+      "expectations": [
+        "The page has 3 to 10 stops",
+        "Every stop puts what was asked beside what is there",
+        "No stop needs more than 100 words for what was asked and what is there",
+        "Visible text per stop: median at most 160 words, none above 220",
+        "At most 2 stops are guess-first",
+        "Choices are bare: no colon, at most 12 words",
+        "No stop asks what should happen next",
+        "Every stop shows a figure in view",
+        "Raw evidence is folded away in every stop",
+        "Other findings sit in a list that needs no answer (at least 3)",
+        "Every part in the overview shows a picture or a number",
+        "Plans are listed, not asked: a decisions list exists",
+        "The page can take answers and hand them back",
+        "No wireframe slot is left unfilled",
+        "Every picture the page points to is beside it",
+        "The run touched nothing it was told to leave alone"
+      ],
+      "graded_by": "python3 evals/check_page.py {out}/index.html --json --transcript <the run's transcript> --forbid <each path the brief rules out>",
+      "not_graded": "Whether the stops are the right ones, and whether each heading states its finding. A person reads one page per round for that."
+    }
+  ]
+}

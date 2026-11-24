@@ -17,6 +17,7 @@ directions name no product or host on purpose, so they stay true as those change
 | `SKILL.md` | The directions |
 | `assets/review-page.html` | A wireframe of a review page: every part in its place, each slot labelled, no content. Its inputs, saving and copying work. Copy it and fill the slots. |
 | `scripts/serve.py` | A small server that serves one review folder and saves the answers to a file. Python standard library only. |
+| `evals/` | The test definition and a script that checks a page's form. For people changing the skill. |
 
 ## Install
 
@@ -52,6 +53,25 @@ The page saves every change to the server, which writes `answers.json` in the re
 folder and appends each save to `answers.log`. The server listens on its own machine only
 and sends nothing anywhere else. If the page cannot reach it, the page says so and shows
 the answers as text to copy.
+
+## Evals
+
+`evals/` is for people changing the skill. An agent using the skill never reads it.
+
+- `evals/evals.json` defines the test in the skill-creator format: a prompt, a baseline
+  prompt without the skill, and the properties a good page has.
+- `evals/check_page.py` measures a page's form: how many stops, how much reading per stop,
+  how the choices are worded, what is folded away. It reads the page as written and needs
+  only Python.
+
+```sh
+python3 evals/check_page.py path/to/index.html
+```
+
+A run starts from a case folder that holds the research already done, so it spends its
+time on the page and not on reading the work. No case ships here yet; the first one is
+private. The checks measure form only. Whether the stops are the right ones is still for a
+person to judge.
 
 ## Status
 
