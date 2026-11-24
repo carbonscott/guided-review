@@ -12,10 +12,17 @@ Six principles carry it:
 
 1. The reviewer is the instrument.
 2. Tell what you can check; ask only what they alone hold.
-3. Every part gets a glance, a few get a stop.
+3. Glance at everything, stop at a few, and let them stop anywhere.
 4. Read their grasp from their answers, part by part; never test them.
-5. The review says what it covered; never score the person.
+5. The review says what it covered; the page only records what was answered. Never score
+   the person.
 6. Start with nothing asked.
+
+The page runs from most to least needed: a glance at every part (findings folded inside),
+then the stops, the main part first and the rest by distance from the request, then the
+lists that need no answer, folded. The page counts its own reading time and marks it
+between the stops, so wherever the reviewer stops, they hold the best review that time
+could buy, and the coverage view says how far they got.
 
 A review looks back: what to do next is listed, never asked. The directions name no product
 or host on purpose, so they stay true as those change.
@@ -25,7 +32,7 @@ or host on purpose, so they stay true as those change.
 | File | What it is |
 |---|---|
 | `SKILL.md` | The directions |
-| `assets/review-page.html` | A wireframe of a review page: every part in its place, each slot labelled, no content. Its marks, saving, copying and the coverage view work. Copy it and fill the slots. |
+| `assets/review-page.html` | A wireframe of a review page: every part in its place, each slot labelled, no content. Its marks, folds, time marks, saving, copying and the coverage view work. Copy it and fill the slots. |
 | `scripts/serve.py` | A small server that serves one review folder and saves the answers to a file. Python standard library only. |
 | `evals/` | The test definition and a script that checks a page's form. For people changing the skill. |
 
@@ -71,9 +78,12 @@ the answers as text to copy.
 
 - `evals/evals.json` defines the test in the skill-creator format: a prompt, a baseline
   prompt without the skill, and the properties a good page has.
-- `evals/check_page.py` measures a page's form: how many stops, how much reading per stop,
-  how the choices are worded, what is folded away. It reads the page as written and needs
-  only Python.
+- Eval 1, `page-from-frozen-research`, builds a page. Eval 2, `review-from-answers`, writes
+  the review from a page and a set of sent answers; a person or an agent grades it by reading.
+- `evals/check_page.py` measures a page's form: how many stops, how much reading per stop
+  and for the whole page against the budget, whether the main part comes first, how the
+  choices are worded, what is folded away. It counts time the same way the page does, reads
+  the page as written and needs only Python.
 
 ```sh
 python3 evals/check_page.py path/to/index.html
@@ -89,5 +99,6 @@ person to judge.
 Draft. The server and the wireframe are tested, with a headless browser for the page.
 Two reviews of real work shaped the directions. The first asked mostly about next steps.
 The second quizzed the reviewer on findings the agent already knew. Then came: tell first,
-ask second. The latest round adds parts and coverage, so that a review says how much of
-the work the reviewer's judgment reached.
+ask second. Then parts and coverage, so that a review says how much of the work the
+reviewer's judgment reached. The latest round holds the whole page to the reviewer's time:
+pages had passed every check on their stops while the text around them doubled.

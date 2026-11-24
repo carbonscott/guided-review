@@ -4,15 +4,15 @@
     {
       "id": 1,
       "name": "page-from-frozen-research",
-      "prompt": "Read the skill at {skill}/SKILL.md and follow it for this task. The case is in {case}: read brief.md there first. Your output folder is {out}. If you start a server, use port {port}. When you finish, reply with one short paragraph: what you built, and anything you could not do.",
-      "baseline_prompt": "The case is in {case}: read brief.md there first and do what the reviewer asks. Your output folder is {out}. If you start a server, use port {port}. When you finish, reply with one short paragraph: what you built, and anything you could not do.",
-      "expected_output": "A review page at {out}/index.html, with its pictures beside it, that a reviewer can answer in about the budget the brief gives: every part of the work shown with a mark to set, a few stops that tell first and ask second, each stop and finding under its part, the other findings in a list, plans listed and not asked, and a view of what the answers cover.",
+      "prompt": "Read the skill at {skill}/SKILL.md and follow it for this task. The case is in {case}: read brief.md there first. Your output folder is {out}. Keep any scratch files in {scratch}. If you start a server, use port {port}. When you finish, reply with one short paragraph: what you built, and anything you could not do.",
+      "baseline_prompt": "The case is in {case}: read brief.md there first and do what the reviewer asks. Your output folder is {out}. Keep any scratch files in {scratch}. If you start a server, use port {port}. When you finish, reply with one short paragraph: what you built, and anything you could not do.",
+      "expected_output": "A review page at {out}/index.html, with its pictures beside it, that runs from most to least needed so the reviewer can stop anywhere: a glance at every part with its findings folded inside, the stops (the main part first, then by distance) that tell first and ask second, the lists that need no answer folded, and a view of what the answers reach. Everything in view fits the budget the brief gives.",
       "files": [],
       "case": "A case folder holds the research already done, so a run spends its time on the page and not on reading the work: brief.md (the request, the level and budget already settled, and the rule to read nothing outside the folder), notes/ (what was asked, what was made, what was checked, where the work differs from the request, loose ends), excerpts.md (raw evidence with sources) and evidence/ (pictures with a README). No case ships in this repo yet; the first one is private.",
       "expectations": [
         "The page has 3 to 10 stops",
         "Every stop puts what was asked beside what is there",
-        "No stop needs more than 100 words for what was asked and what is there",
+        "No stop needs more than 100 words for its heading, what was asked and what is there",
         "Visible text per stop: median at most 160 words, none above 220",
         "At most 2 stops are guess-first",
         "Choices are bare: no colon, at most 12 words",
@@ -20,18 +20,44 @@
         "Every stop shows a figure in view",
         "Every stop belongs to a part shown in the overview",
         "Raw evidence is folded away in every stop",
-        "Other findings sit in a list that needs no answer (at least 3)",
+        "The first stop is on the main part, the first in the overview",
+        "Everything in view fits the budget (200 words a minute, 18 s a stop, 6 s a part)",
+        "Findings beyond the stops: at least 3",
+        "Findings are folded inside their parts",
         "The overview shows every part: 3 to 7, each with an id",
         "Every part in the overview shows a picture or a number",
-        "Every finding names its part",
         "Plans are listed, not asked: a decisions list exists",
-        "The page can take answers, show their coverage and hand them back",
+        "Not looked at, decisions and checks are each folded behind one line",
+        "The page shows its own cost and what the answers reach",
+        "The page can take answers and hand them back",
         "No wireframe slot is left unfilled",
         "Every picture the page points to is beside it",
         "The run touched nothing it was told to leave alone"
       ],
-      "graded_by": "python3 evals/check_page.py {out}/index.html --json --transcript <the run's transcript> --forbid <each path the brief rules out>",
-      "not_graded": "Whether the stops are the right ones, whether each heading states its finding, and whether the parts are the ones a reviewer would name. A person reads one page per round for that."
+      "graded_by": "python3 evals/check_page.py {out}/index.html --json --transcript <the run's transcript> --forbid <each path the brief rules out, and every other run's folder>",
+      "not_graded": "Whether the stops are the right ones, whether each heading states its finding, whether the first part really is the one the request is mostly about, and whether the numbers are true to the case. A person reads one page per round for the first three; the numbers can be spot-checked against the case text."
+    },
+    {
+      "id": 2,
+      "name": "review-from-answers",
+      "prompt": "Read the skill at {skill}/SKILL.md and follow it for this task. A reviewer answered the review page in {page} (index.html) and sent their answers, which are in {page}/answers.json. The research behind the page is in {case}. They are not here, so you cannot ask them anything. Write the draft review the skill asks for, from their answers, to {out}/review.md, for them to approve. Keep any scratch files in {scratch}. When you finish, reply with one short paragraph: what you wrote, and anything you could not do.",
+      "expected_output": "A draft review at {out}/review.md, in the reviewer's voice: on its first screen the verdict, coverage one line per part, gaps one line each and what they want that was never asked for; below that the evidence, open questions, proposed next steps and the answers exactly as given.",
+      "files": [],
+      "case": "A page from eval 1 and a sent answers.json for it. Answers made by a script should cover each signal at least once: a part marked can't judge, a stop answered 'partly' with a note, a bare 'yes' that was news to the reviewer, a 'cannot tell', a 'go deeper', a guess with the result seen but no answer, a stop not reached, and a ticked finding in a part with no stop.",
+      "expectations": [
+        "What the reviewer would sign (verdict, coverage, gaps, wants) comes first and runs to about 300 words",
+        "Coverage has one line per part, using judged, answered, glanced, could not judge, left to the maker or not reached",
+        "A bare tap is called answered, not judged",
+        "A 'yes' on something that was news to the reviewer is called accepted after the fact",
+        "Every 'cannot tell' becomes an open question with better context, or a call for another reviewer",
+        "An unanswered stop, and a guess with no answer after the result, are reported as not reviewed",
+        "Every 'go deeper' and 'look closer' leads to a proposed further round",
+        "Every statement beyond the answers is marked as the agent's reading",
+        "The answers appear exactly as given",
+        "Nothing is sent or acted on; a note that states a lasting preference is asked about, not recorded"
+      ],
+      "graded_by": "A person or an agent reading review.md beside answers.json. No script yet.",
+      "not_graded": "Whether the gaps are worded as the reviewer would word them."
     }
   ]
 }

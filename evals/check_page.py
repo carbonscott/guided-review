@@ -19,15 +19,18 @@ from html.parser import HTMLParser
 # Pass marks. They come from one page a reviewer approved: 7 stops, a median of 70 words
 # of "asked for / what is there" (longest 82), a median of 134 visible words per stop
 # (longest 178), one guess-first stop, and a longest choice of 9 words. The checks on
-# parts (every stop and finding in a part, a coverage view) came later, with the idea that
-# a review states what it covered; that page predates them.
+# parts (every stop and finding in a part, a coverage view) and on time (everything in view
+# fits the budget, the main part first, what needs no answer folded) came later, with the
+# ideas that a review states what it covered and that a reviewer can stop anywhere; that
+# page predates them.
 MIN_STOPS, MAX_STOPS = 3, 10
-MAX_SAID_WORDS = 100
+MAX_SAID_WORDS = 100          # heading + asked for + what is there; the skill aims at about 70
 MAX_VISIBLE_MEDIAN, MAX_VISIBLE_WORDS = 160, 220
 MAX_GUESS_FIRST = 2
 MAX_CHOICE_WORDS = 12
 MIN_FINDINGS = 3
 MIN_PARTS, MAX_PARTS = 3, 7
+WPM, PER_STOP, PER_PART = 200, 0.3, 0.1      # the page's own time count: words a minute, minutes to answer a stop or mark a part
 PLAN = re.compile(r"\b(what|when|which|how|who)\b[^?.]{0,40}\bshould\b(?!n['’]t)|\bshould (we|i|it|they|this|these)\b|\bdo next\b|\bwhat to do\b", re.I)
 SLOT = re.compile(r"\[[A-Z][^\[\]]{6,}\]")
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
@@ -101,10 +104,34 @@ def is_tag(*tags):
     return lambda n: n.tag in tags
 
 
+def timeline(wrap):
+    """Minutes to the end of each stop, and for the whole page in view, the same way the page counts them."""
+    c, ends = {"words": 0, "stops": 0, "parts": 0}, []
+    cost = lambda: c["words"] / WPM + c["stops"] * PER_STOP + c["parts"] * PER_PART
+
+    def walk(node):
+        for ch in node.children:
+            if isinstance(ch, str):
+                c["words"] += len(ch.split())
+                continue
+            if ch.tag in ("details", "script", "style", "textarea") or "chrome" in ch.classes():
+                continue
+            walk(ch)
+            if "part" in ch.classes():
+                c["parts"] += 1
+            if "stop" in ch.classes():
+                c["stops"] += 1
+                ends.append(cost())
+    walk(wrap)
+    return ends, cost()
+
+
 def measure(path):
     b = Builder()
     b.feed(open(path, encoding="utf-8", errors="replace").read())
     root, here = b.root, os.path.dirname(os.path.abspath(path))
+    wraps = root.find(has("wrap"))
+    wrap = wraps[0] if wraps else root
     folded = is_tag("details")
     stops = []
     for s in root.find(has("stop")):
@@ -114,11 +141,12 @@ def measure(path):
         heads = s.find(is_tag("h2", "h3"))
         figures = [n for n in s.find(lambda n: n.tag in ("figure", "img", "table") or {"rows", "bar", "tbl"} & set(n.classes()))
                    if not n.inside(folded) and not n.inside(is_tag("fieldset"))]
+        title = heads[0].text() if heads else ""
         stops.append({
             "id": s.attrs.get("data-id", "?"),
             "part": s.attrs.get("data-part"),
-            "title": heads[0].text() if heads else "",
-            "said_words": words(said[0].text()) if said else None,
+            "title": title,
+            "said_words": words(title) + words(said[0].text()) if said else None,
             "visible_words": words(s.text(skip=lambda n: n.tag == "details" or "extras" in n.classes())),
             "guess_first": bool(s.find(lambda n: {"guess", "show"} & set(n.classes()))),
             "options": options,
@@ -132,20 +160,38 @@ def measure(path):
     visible = root.text()
     parts = root.find(has("part"))
     part_ids = [p.attrs.get("data-part") for p in parts]
-    finding_parts = [li.attrs.get("data-part") for f in root.find(has("findings")) for li in f.find(is_tag("li"))]
+    items = [li for f in root.find(has("findings")) for li in f.find(is_tag("li"))]
+    in_part = lambda li: next((p.attrs.get("data-part") for p in parts if li in list(p.walk())), None)
+    lists = {}
+    for h in root.find(is_tag("h2")):
+        name = next((k for k, pat in (("not looked at", r"not looked"), ("decisions", r"decisions"), ("checked", r"checked for you")) if re.search(pat, h.text(), re.I)), None)
+        if name:
+            sib = [c for c in h.parent.children if not isinstance(c, str)]
+            nxt = sib[sib.index(h) + 1] if sib.index(h) + 1 < len(sib) else None
+            lists[name] = bool(nxt is not None and nxt.tag == "details")
+    try:
+        budget = float(wrap.attrs.get("data-budget") or 10)
+    except ValueError:
+        budget = 10.0
+    ends, total = timeline(wrap)
     images = [n.attrs.get("src", "") for n in root.find(is_tag("img"))]
     local = [s for s in images if s and not re.match(r"[a-z]+:", s)]
     ids = {n.attrs.get("id") for n in root.walk() if n.attrs.get("id")}
     script = " ".join(str(c) for n in root.find(is_tag("script")) for c in n.children if isinstance(c, str))
     return {
         "stops": stops,
-        "findings": sum(len(f.find(is_tag("li"))) for f in root.find(has("findings"))),
+        "findings": len(items),
+        "findings_folded_in_parts": sum(1 for li in items if li.inside(folded) and in_part(li)),
         "parts": len(parts),
         "part_ids": part_ids,
-        "finding_parts": finding_parts,
         "parts_shown": len([p for p in parts if p.find(lambda n: n.tag == "img" or "big" in n.classes())]),
-        "decisions_listed": any(re.search(r"decisions", h.text(), re.I) for h in root.find(is_tag("h2", "h3"))),
-        "hand_back": sorted({"save", "send", "copy", "record", "coverage"} & ids),
+        "decisions_listed": "decisions" in lists,
+        "lists_folded": lists,
+        "budget": budget,
+        "minutes_to_last_stop": round(ends[-1], 1) if ends else None,
+        "minutes_in_view": round(total, 1),
+        "shows_cost_and_reach": sorted({"time-total", "coverage"} & ids),
+        "hand_back": sorted({"save", "send", "copy", "record"} & ids),
         "posts_answers": "fetch(" in script,
         "slots_left": len(SLOT.findall(visible)) + len(root.find(has("slot"))),
         "missing_pictures": [s for s in local if not os.path.exists(os.path.join(here, s))],
@@ -174,7 +220,7 @@ def grade(m):
         expect(f"The page has {MIN_STOPS} to {MAX_STOPS} stops", MIN_STOPS <= n <= MAX_STOPS, f"{n} stops")
         expect("Every stop puts what was asked beside what is there", all(s["asked_and_there"] for s in stops),
                "missing in: " + (", ".join(s["id"] for s in stops if not s["asked_and_there"]) or "none"))
-        expect(f"No stop needs more than {MAX_SAID_WORDS} words for what was asked and what is there",
+        expect(f"No stop needs more than {MAX_SAID_WORDS} words for its heading, what was asked and what is there",
                len(said) == n and max(said) <= MAX_SAID_WORDS,
                f"median {statistics.median(said):.0f}, longest {max(said)}" if said else "not measurable: no 'said' block")
         expect(f"Visible text per stop: median at most {MAX_VISIBLE_MEDIAN} words, none above {MAX_VISIBLE_WORDS}",
@@ -195,17 +241,26 @@ def grade(m):
                all(s["evidence_folded"] and not s["pre_in_view"] for s in stops),
                f"{sum(s['pre_in_view'] for s in stops)} raw blocks in view; no fold in: "
                + (", ".join(s["id"] for s in stops if not s["evidence_folded"]) or "none"))
-    expect(f"Other findings sit in a list that needs no answer (at least {MIN_FINDINGS})", m["findings"] >= MIN_FINDINGS,
-           f"{m['findings']} findings listed")
+        main = m["part_ids"][0] if m["part_ids"] else None
+        expect("The first stop is on the main part, the first in the overview", main and stops[0]["part"] == main,
+               f"first stop {stops[0]['id']} is on {stops[0]['part']}; main part is {main}")
+    expect(f"Everything in view fits the budget ({WPM} words a minute, {PER_STOP * 60:.0f} s a stop, {PER_PART * 60:.0f} s a part)",
+           m["minutes_in_view"] <= m["budget"],
+           f"{m['minutes_in_view']} min in view, {m['minutes_to_last_stop']} min to the last stop; budget {m['budget']:g} min")
+    expect(f"Findings beyond the stops: at least {MIN_FINDINGS}", m["findings"] >= MIN_FINDINGS, f"{m['findings']} findings")
+    expect("Findings are folded inside their parts", m["findings"] and m["findings_folded_in_parts"] == m["findings"],
+           f"{m['findings_folded_in_parts']} of {m['findings']} folded inside a part")
     expect(f"The overview shows every part: {MIN_PARTS} to {MAX_PARTS}, each with an id", MIN_PARTS <= m["parts"] <= MAX_PARTS
            and all(m["part_ids"]) and len(set(m["part_ids"])) == m["parts"], f"{m['parts']} parts, ids: {', '.join(str(i) for i in m['part_ids'])}")
     expect("Every part in the overview shows a picture or a number", m["parts"] >= 2 and m["parts_shown"] == m["parts"],
            f"{m['parts_shown']} of {m['parts']} parts")
-    stray = [p for p in m["finding_parts"] if not p or p not in m["part_ids"]]
-    expect("Every finding names its part", m["finding_parts"] and not stray,
-           f"{len(m['finding_parts'])} findings, {len(stray)} without a known part")
     expect("Plans are listed, not asked: a decisions list exists", m["decisions_listed"], "heading found" if m["decisions_listed"] else "no such heading")
-    expect("The page can take answers, show their coverage and hand them back", len(m["hand_back"]) == 5 and m["posts_answers"],
+    lf = m["lists_folded"]
+    expect("Not looked at, decisions and checks are each folded behind one line", len(lf) == 3 and all(lf.values()),
+           ", ".join(f"{k}: {'folded' if v else 'in view'}" for k, v in lf.items()) or "none found")
+    expect("The page shows its own cost and what the answers reach", len(m["shows_cost_and_reach"]) == 2,
+           "present: " + (", ".join(m["shows_cost_and_reach"]) or "none"))
+    expect("The page can take answers and hand them back", len(m["hand_back"]) == 4 and m["posts_answers"],
            "present: " + (", ".join(m["hand_back"]) or "none") + ("; posts answers" if m["posts_answers"] else "; does not post answers"))
     expect("No wireframe slot is left unfilled", m["slots_left"] == 0, f"{m['slots_left']} slots left")
     expect("Every picture the page points to is beside it", not m["missing_pictures"],

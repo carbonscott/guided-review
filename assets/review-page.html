@@ -6,18 +6,30 @@
   content. Copy this file into a new folder as index.html, put the evidence files beside
   it, fill the slots, and repeat or remove blocks as the review needs.
 
-  Keep: the styles, the "What your review covers" and "Hand back" sections, the bar at the
+  The page runs from most to least needed, so the reviewer can stop anywhere: what is under
+  review, a glance at every part, the stops (the main part first, then by distance), the
+  folded lists, then coverage and hand back.
+
+  Keep: the styles, the block marked class="chrome" (coverage and hand back), the bar at the
   bottom and the script.
 
   What the script expects, and what it adds:
-    <div class="wrap" data-review="..." data-version="...">   a name for this review; the version of the work
-    <article class="part" data-part="p1">      one part of the work; the script adds its three marks
+    <div class="wrap" data-review="..." data-version="..." data-budget="10">
+                                               a name for this review; the version of the work;
+                                               the reviewer's time in minutes
+    <article class="part" data-part="p1">      one part; the first is the main part. The script adds
+                                               its three marks and counts its folded findings
+    <details class="more"><summary></summary><ul class="findings"><li>   that part's findings;
+                                               the script fills the summary and adds a tick to each
     <section class="stop" data-id="s1" data-part="p1">   one stop, in one part; the script adds the
                                                signals, the ways out, "go deeper" and a note
     <input name="s1" value="yes">              the main answer uses the stop's id as its name
     <fieldset class="guess"> + <button class="show"> + <div class="reveal" hidden>   guess, then see
-    <li data-part="p1"> in <ul class="findings">   one finding; the script adds its part and a tick
-    <div id="coverage">                        the script shows what the answers cover, part by part
+    <span id="time-total">                     the script writes how long the page takes
+    Time marks between the stops, and the coverage view, are added by the script.
+
+  Time is counted as everything in view outside <details> and the chrome block, at 200 words
+  a minute, plus 18 seconds to answer each stop and 6 to mark each part.
 
   Answers are posted to "answers" beside the page on every change (see scripts/serve.py), which
   saves them on the machine that serves the page, coverage included. With no receiver the page
@@ -67,17 +79,22 @@
 
   .parts { display:grid; grid-template-columns:repeat(auto-fit, minmax(17rem, 1fr)); gap:.8rem; margin-top:.8rem; }
   .part { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.8rem; display:flex; flex-direction:column; gap:.5rem; min-width:0; }
+  .part.main { border-color:var(--accent); }
   .part h3 { margin:0; font-size:1rem; } .part p { margin:0; font-size:.92rem; }
   .part img, .part .slot { border-radius:4px; width:100%; height:9rem; object-fit:cover; object-position:top; }
   .part .big { font:500 1.5rem/1.1 var(--mono); color:var(--accent); height:9rem; display:flex; flex-direction:column; justify-content:center; gap:.3rem;
                border:1px dashed var(--line); border-radius:4px; padding:.8rem; }
   .part .big small { font:400 .85rem/1.3 var(--sans); color:var(--dim); }
   .part .marks { margin-top:auto; display:flex; flex-wrap:wrap; gap:.35rem; }
+  .part details.more { font-size:.9rem; border-top:1px dashed var(--line); padding-top:.4rem; }
 
   .stop { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem; margin:1rem 0; }
   .said { display:grid; grid-template-columns:6.2rem 1fr; gap:.35rem .8rem; margin:0 0 .8rem; }
   .said dt { color:var(--dim); font-size:.88rem; padding-top:.1rem; } .said dd { margin:0; min-width:0; }
   figure { margin:.9rem 0; } figure img { border:1px solid var(--line); border-radius:6px; display:block; }
+  .when { display:flex; align-items:center; gap:.7rem; font:500 .78rem/1.3 var(--mono); letter-spacing:.04em; color:var(--dim); margin:1.2rem 0; }
+  .when::before, .when::after { content:""; flex:1; border-top:1px dashed var(--line); }
+  .when.end { color:var(--accent); }
 
   /* Three ready figures for a result: a split bar, labelled rows, a small table. */
   .bar { display:flex; height:2.1rem; border-radius:5px; overflow:hidden; font:500 .85rem/2.1rem var(--mono); }
@@ -102,29 +119,31 @@
   .extras > div { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
   .extras .lead { font-size:.82rem; color:var(--dim); margin-right:.2rem; }
   textarea { width:100%; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:.5rem .6rem; }
-  details.ev { margin-top:.8rem; font-size:.9rem; } details summary { cursor:pointer; color:var(--accent); }
+  details summary { cursor:pointer; color:var(--accent); }
+  details.ev { margin-top:.8rem; font-size:.9rem; }
+  details.fold { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.6rem .8rem; margin:.5rem 0; }
+  details.fold[open] summary { margin-bottom:.4rem; }
   pre { font:.8rem/1.5 var(--mono); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:.6rem .7rem; overflow-x:auto; margin:.5rem 0; }
   button { font:500 .95rem var(--sans); padding:.55rem .95rem; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); cursor:pointer; }
   button.plain { background:transparent; color:var(--accent); } button:disabled { opacity:.45; cursor:default; }
 
-  .findings { list-style:none; padding:0; margin:.6rem 0; display:grid; gap:.5rem; }
-  .findings li { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.65rem .8rem; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.3rem .8rem; align-items:start; }
-  .findings .where { grid-column:1 / -1; font:500 .7rem var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--dim); }
+  .findings { list-style:none; padding:0; margin:.5rem 0 0; display:grid; gap:.45rem; }
+  .findings li { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.3rem .6rem; align-items:start; font-size:.9rem; }
   ul.plain { padding-left:1.1rem; margin:.4rem 0; } ul.plain li { margin:.3rem 0; }
   .panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem; margin:.8rem 0; }
   .panel h3 { font-size:.95rem; margin:.9rem 0 .2rem; } .panel h3:first-child { margin-top:0; }
 
-  /* What the answers cover: one row per part, one dot per stop. */
+  /* What the answers reach: one row per part, one dot per stop. */
   .cov { display:grid; gap:.3rem; margin:.6rem 0; }
   .cov > div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.1rem .8rem; align-items:center; padding:.5rem .7rem; border-radius:6px; background:var(--bg); border-left:3px solid var(--line); }
   .cov .name { font-weight:500; font-size:.93rem; min-width:0; }
   .cov .state { grid-column:1 / -1; font-size:.84rem; color:var(--dim); }
-  .cov > div[data-state="judged"] { border-left-color:var(--ok); }
+  .cov > div[data-state="answered"] { border-left-color:var(--ok); }
   .cov > div[data-state="partly"], .cov > div[data-state="glanced"] { border-left-color:var(--accent); }
   .cov > div[data-state="cannot"] { border-left-color:var(--gap); }
   .dots { display:flex; gap:.25rem; }
   .dot { width:.8rem; height:.8rem; border-radius:50%; border:1.5px solid var(--dim); display:inline-block; }
-  .dot.judged { background:var(--ok); border-color:var(--ok); } .dot.cannot { background:var(--gap); border-color:var(--gap); }
+  .dot.answered { background:var(--ok); border-color:var(--ok); } .dot.cannot { background:var(--gap); border-color:var(--gap); }
   .dot.maker { background:var(--line); border-color:var(--line); } .dot.mark { border-radius:2px; }
   .legend { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.82rem; color:var(--dim); } .legend span { display:inline-flex; gap:.35rem; align-items:center; }
 
@@ -136,7 +155,7 @@
 </style>
 </head>
 <body>
-<div class="wrap" data-review="wireframe" data-version="[version and date of the work]">
+<div class="wrap" data-review="wireframe" data-version="[version and date of the work]" data-budget="10">
 
 <p class="banner">Wireframe. Every line in [square brackets] is a slot that says what goes there. Nothing on this page is content.</p>
 
@@ -146,28 +165,36 @@
   <dt>Under review</dt><dd>[What exactly was looked at: its version and date.]</dd>
   <dt>Asked for</dt><dd>[What was asked for, in the reviewer's own words where they exist. One or two sentences.]</dd>
   <dt>You asked to check</dt><dd>[The checks they named, each a stop below. Remove this line if they named none.]</dd>
-  <dt>Depth</dt><dd>[The level and time they gave, or: outcome first, about ten minutes. N stops, then N findings to skim.]</dd>
+  <dt>Time</dt><dd>[The time they gave, or: about ten minutes.] <span id="time-total"></span></dd>
 </dl>
 
 <h2>What was made</h2>
-<p class="dim">[How many parts, and what is new or changed.] One tap per part: looks right, look closer, or can't judge this.</p>
+<p class="dim">[How many parts, and what is new or changed.] One tap per part. Each part's other findings are folded inside it.</p>
 <section class="parts" data-id="overview">
+  <!-- The first part is the main part: the one the request is mostly about. -->
   <article class="part" data-part="p1">
     <div class="slot">[A picture of this part: the real screen, plot or output. An &lt;img&gt; goes here.]</div>
     <h3>[Part name]</h3>
     <p>[What this part is, in one or two sentences. Say whether it is new or changed.]</p>
+    <details class="more"><summary></summary><ul class="findings">
+      <li><span><b>[A finding in this part, in one sentence.]</b> [One sentence on what is there.]</span></li>
+      <li><span><b>[A finding in this part, in one sentence.]</b> [One sentence on what is there.]</span></li>
+    </ul></details>
   </article>
   <article class="part" data-part="p2">
     <div class="big">[N of M]<small>[the one number that sizes this part, when no picture exists]</small></div>
     <h3>[Part name]</h3>
     <p>[What this part is, in one or two sentences.]</p>
+    <details class="more"><summary></summary><ul class="findings">
+      <li><span><b>[A finding in this part, in one sentence.]</b> [One sentence on what is there.]</span></li>
+    </ul></details>
   </article>
 </section>
 
 <h2>[N] stops</h2>
-<p class="dim">Each one tells you one thing about the work and asks one thing about you. Put your reasons in the note.</p>
+<p class="dim">Each one tells you one thing about the work and asks one thing about you. The first is on the main part; the rest follow by how far the work is from what you asked. Stop wherever you like.</p>
 
-<!-- Form 1. Is this what you meant? A quick mark. The most common form. -->
+<!-- Form 1. Is this what you meant? A quick mark. The most common form. The first stop is on the main part. -->
 <section class="stop" data-id="s1" data-part="p1">
   <p class="tag">Stop 1 · [Part name] · Is this what you meant?</p>
   <h3>[The finding, stated as a fact, in one line.]</h3>
@@ -213,7 +240,8 @@
   </details>
 </section>
 
-<!-- Form 3. Guess first. Rare: only where hindsight would hide their expectation. The guess locks. -->
+<!-- Form 3. Guess first. Rare: only where hindsight would hide their expectation. The guess
+     comes first, then the result, then the one question. The guess locks. -->
 <section class="stop" data-id="s3" data-part="p2">
   <p class="tag">Stop 3 · [Part name] · Is this what you pictured? · Guess first</p>
   <h3>[The subject, named without giving the result away.]</h3>
@@ -232,7 +260,7 @@
       <tr><th>[Column]</th><th>[Column]</th><th>[Column]</th></tr>
       <tr><td>[The real result]</td><td>[...]</td><td>[...]</td></tr>
     </table><figcaption>[Where it came from, in one line.]</figcaption></figure>
-    <fieldset><legend>[Is this what you meant by "..."?]</legend><div class="choices">
+    <fieldset><legend>[Is this what you pictured?]</legend><div class="choices">
       <label class="opt"><input type="radio" name="s3" value="yes"> Yes</label>
       <label class="opt"><input type="radio" name="s3" value="partly"> Partly</label>
       <label class="opt"><input type="radio" name="s3" value="no"> No</label>
@@ -266,46 +294,38 @@
   </details>
 </section>
 
-<h2>[N] more findings</h2>
-<p class="dim">Places where the work differs from the words of the request, under their part. They need no answer. Tick any you want as a stop in a second round.</p>
-<ul class="findings" data-id="findings">
-  <li data-part="p1"><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span></li>
-  <li data-part="p2"><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span></li>
-</ul>
-
 <h2>Not looked at</h2>
-<ul class="plain">
-  <li>[What this review left out, one line each, with the reason.]</li>
-</ul>
+<details class="fold"><summary>[One line: how many things this review left out.]</summary>
+  <ul class="plain"><li>[What this review left out, one line each, with the reason.]</li></ul>
+</details>
 
 <h2>Decisions that are waiting</h2>
-<p class="dim">Not part of this review. They are about what happens next, so they are listed and not asked.</p>
-<ul class="plain">
-  <li>[An open issue, a loose end, a choice about what to do next. One line each.]</li>
-</ul>
+<details class="fold"><summary>[One line: how many decisions wait. They are about what happens next, so they are listed and not asked.]</summary>
+  <ul class="plain"><li>[An open issue, a loose end, a choice about what to do next. One line each.]</li></ul>
+</details>
 
 <h2>Checked for you</h2>
-<div class="panel">
-  <p class="dim">[When and from what this was checked, and what was not rerun.]</p>
+<details class="fold"><summary>[One line: what was checked, from what, and how much holds.]</summary>
   <h3>Does not match its evidence</h3>
   <ul class="plain"><li>[A claim, and what its evidence shows instead.]</li></ul>
   <h3>Holds</h3>
   <ul class="plain"><li>[What was checked and found true.]</li></ul>
   <h3>Could not check</h3>
   <ul class="plain"><li>[What could not be checked, and why.]</li></ul>
-</div>
+</details>
 
 <!-- Keep everything from here down. -->
-<h2>What your review covers</h2>
+<div class="chrome">
+<h2>What your answers reach</h2>
 <div class="panel">
   <p id="coverage-sum"></p>
   <div id="coverage" class="cov"></div>
   <div class="legend">
-    <span><i class="dot judged"></i> judged</span><span><i class="dot cannot"></i> could not tell</span>
+    <span><i class="dot answered"></i> answered</span><span><i class="dot cannot"></i> could not tell</span>
     <span><i class="dot maker"></i> left to the maker</span><span><i class="dot"></i> not answered</span>
-    <span><i class="dot mark judged"></i> the part's mark</span>
+    <span><i class="dot mark answered"></i> the part's mark</span>
   </div>
-  <p class="dim">One row per part, one dot per stop. This is what your review will say it covered. Parts you could not judge are not a mark against you: they need better context or another reviewer.</p>
+  <p class="dim">One row per part, one dot per stop. This records what you answered; it does not judge it. Parts you could not judge are not a mark against you: they need better context or another reviewer.</p>
 </div>
 
 <h2>Hand back</h2>
@@ -315,6 +335,7 @@
   <label for="record" class="dim">Your answers as text</label>
   <textarea id="record" rows="10" readonly></textarea>
 </div>
+</div>
 
 </div>
 <div id="bar"><div><span id="status" role="status"></span><button type="button" class="plain" id="save">Save</button><button type="button" id="send">Send</button></div></div>
@@ -322,14 +343,40 @@
 <script>
 (() => {
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-  const meta = document.querySelector('.wrap').dataset;
+  const wrap = document.querySelector('.wrap'), meta = wrap.dataset;
   const key = 'guided-review:' + meta.review;
   const status = document.getElementById('status');
   const recordBox = document.getElementById('record');
   const parts = $$('.part[data-part]').map(p => ({ id: p.dataset.part, el: p, name: ((p.querySelector('h3') || {}).textContent || p.dataset.part).trim() }));
-  const partName = id => (parts.find(p => p.id === id) || { name: id || 'Other' }).name;
+  const partOf = el => el.dataset.part || ((el.closest('.part[data-part]') || {}).dataset || {}).part;
   let receiver = null;      // null: not tried yet; false: none reached; otherwise the receiver's last reply
   let sent = false, dirty = false, notice = '', timer;
+
+  // Time, counted before anything is added: words in view outside <details> and the chrome
+  // block at 200 a minute, plus 18 seconds to answer each stop and 6 to mark each part.
+  const WPM = 200, PER_STOP = 0.3, PER_PART = 0.1, SKIP = new Set(['DETAILS', 'SCRIPT', 'STYLE', 'TEXTAREA']);
+  const ends = [];
+  (function walk(node, c) {
+    for (const n of node.childNodes) {
+      if (n.nodeType === 3) { c.words += n.textContent.split(/\s+/).filter(Boolean).length; continue; }
+      if (n.nodeType !== 1 || SKIP.has(n.tagName) || n.classList.contains('chrome')) continue;
+      walk(n, c);
+      if (n.classList.contains('part')) c.parts++;
+      if (n.classList.contains('stop')) { c.stops++; ends.push({ stop: n, min: c.words / WPM + c.stops * PER_STOP + c.parts * PER_PART }); }
+    }
+    return c;
+  })(wrap, { words: 0, stops: 0, parts: 0 });
+  ends.forEach((e, i) => {
+    const before = i ? ends[i - 1].min : 0, last = i === ends.length - 1;
+    const crossed = Math.floor(e.min / 5) > Math.floor(before / 5);
+    if (!crossed && !last) return;
+    const p = document.createElement('p');
+    p.className = 'when' + (last ? ' end' : '');
+    p.textContent = last ? 'The stops end here · about ' + Math.max(1, Math.round(e.min)) + ' minutes' : 'About ' + Math.floor(e.min / 5) * 5 + ' minutes to here';
+    e.stop.after(p);
+  });
+  const total = document.getElementById('time-total');
+  if (total && ends.length) total.textContent = 'This page takes about ' + Math.max(1, Math.round(ends[ends.length - 1].min)) + ' minutes to the last stop; what is folded is extra.';
 
   const chip = (type, name, value, text, label) => {
     const l = document.createElement('label'), i = document.createElement('input');
@@ -345,14 +392,22 @@
     return d;
   };
 
-  // Every part gets the same three marks: the review's breadth.
+  // Every part gets the same three marks, and its folded findings get a count and a tick each.
+  let fn = 0;
   for (const p of parts) {
+    if (p === parts[0]) p.el.classList.add('main');
     const marks = row(null,
       chip('radio', 'overview.' + p.id, 'right', 'Looks right', p.name + ': looks right'),
       chip('radio', 'overview.' + p.id, 'closer', 'Look closer', p.name + ': look closer'),
       chip('radio', 'overview.' + p.id, 'cannot', "Can't judge this", p.name + ": can't judge"));
     marks.className = 'marks';
-    p.el.append(marks);
+    p.el.insertBefore(marks, p.el.querySelector(':scope > details.more'));
+    const items = $$('.findings > li', p.el), sum = p.el.querySelector('details.more > summary');
+    if (sum && !sum.textContent.trim()) sum.textContent = items.length + (items.length === 1 ? ' more finding' : ' more findings') + ', no answer needed';
+    for (const li of items) {
+      const b = li.querySelector('b');
+      li.append(chip('checkbox', 'findings.f' + (++fn), 'closer', 'Look closer', (b ? b.textContent : li.textContent).trim().slice(0, 90)));
+    }
   }
 
   // Every stop gets the same signals, ways out, "go deeper" and a note.
@@ -370,25 +425,13 @@
     stop.insertBefore(extras, stop.querySelector(':scope > details.ev'));   // after the reveal on a guess-first stop
   }
 
-  // Every finding shows its part and gets a tick; findings are kept in the order of the parts.
-  const list = document.querySelector('.findings');
-  if (list) {
-    const items = $$(':scope > li', list), order = id => { const i = parts.findIndex(p => p.id === id); return i < 0 ? parts.length : i; };
-    items.sort((a, b) => order(a.dataset.part) - order(b.dataset.part)).forEach((li, n) => {
-      if (!li.querySelector('.where')) { const w = document.createElement('span'); w.className = 'where'; w.textContent = partName(li.dataset.part); li.prepend(w); }
-      const b = li.querySelector('b');
-      li.append(chip('checkbox', 'findings.f' + (n + 1), 'closer', 'Look closer', (b ? b.textContent : li.textContent).trim().slice(0, 90)));
-      list.append(li);
-    });
-  }
-
   function reveal(stop) {
     stop.querySelector('.reveal').hidden = false;
     stop.querySelector('.show').hidden = true;
     $$('.guess input', stop).forEach(i => i.disabled = true);
   }
 
-  // What the answers cover, part by part. A count of where judgment reached, never a score.
+  // What the answers reach, part by part. It records what was answered; the review judges it.
   function coverage(answers) {
     const picked = (id, name) => ((answers[id] || {}).picked || {})[name] || [];
     return parts.map(p => {
@@ -397,22 +440,22 @@
       let closer = mark === 'closer';
       for (const s of $$('.stop').filter(s => s.dataset.part === p.id)) {
         const id = s.dataset.id, a = answers[id], out = (picked(id, id + '.out')[0] || {}).value;
-        stops[id] = !a ? 'open' : out === 'cannot-tell' ? 'cannot' : out === 'makers-call' ? 'maker' : (a.picked[id] || a.note) ? 'judged' : 'open';
+        stops[id] = !a ? 'open' : out === 'cannot-tell' ? 'cannot' : out === 'makers-call' ? 'maker' : (a.picked[id] || a.note) ? 'answered' : 'open';
         if (a && a.deeper) closer = true;
       }
-      if ($$('.findings li').some(li => li.dataset.part === p.id && li.querySelector('input:checked'))) closer = true;
+      if ($$('.findings li').some(li => partOf(li) === p.id && li.querySelector('input:checked'))) closer = true;
       const v = Object.values(stops), n = x => v.filter(y => y === x).length;
       const cannot = n('cannot') > 0 || mark === 'cannot';
-      const state = n('judged') && (cannot || n('open')) ? 'partly' : n('judged') ? 'judged' : cannot ? 'cannot'
+      const state = n('answered') && (cannot || n('open')) ? 'partly' : n('answered') ? 'answered' : cannot ? 'cannot'
                   : mark ? 'glanced' : v.length && n('maker') === v.length ? 'maker' : 'open';
-      return { part: p.id, name: p.name, state, mark, stops, closer };
+      return { part: p.id, name: p.name, main: p === parts[0], state, mark, stops, closer };
     });
   }
-  const WORDS = { judged: 'Judged', partly: 'Partly judged', cannot: 'Could not judge', glanced: 'Glanced', maker: 'Left to the maker', open: 'Not reached' };
+  const WORDS = { answered: 'Answered', partly: 'Partly answered', cannot: 'Could not judge', glanced: 'Glanced', maker: 'Left to the maker', open: 'Not reached' };
   const MARKS = { right: 'looks right', closer: 'look closer', cannot: "can't judge" };
   const describe = c => {
     const v = Object.values(c.stops), bits = [WORDS[c.state]];
-    if (v.length) bits.push(v.filter(x => x === 'judged').length + ' of ' + v.length + (v.length === 1 ? ' stop' : ' stops') + ' judged');
+    if (v.length) bits.push(v.filter(x => x === 'answered').length + ' of ' + v.length + (v.length === 1 ? ' stop' : ' stops') + ' answered');
     if (c.mark) bits.push('marked ' + MARKS[c.mark]);
     if (c.closer) bits.push('closer look asked');
     return bits.join(' · ');
@@ -432,7 +475,7 @@
       if (rev && !rev.hidden) a.revealed = true;
       if (Object.keys(a.picked).length || a.note || a.deeper) answers[id] = a;
     }
-    return { review: meta.review, version: meta.version, saved_at: new Date().toISOString(), done: sent, answers, coverage: coverage(answers) };
+    return { review: meta.review, version: meta.version, budget_minutes: Number(meta.budget) || null, saved_at: new Date().toISOString(), done: sent, answers, coverage: coverage(answers) };
   }
 
   function restore(rec) {
@@ -455,14 +498,14 @@
     const lines = ['review: ' + rec.review, 'version: ' + rec.version, 'status: ' + (rec.done ? 'sent' : 'draft'), ''];
     for (const [id, a] of Object.entries(rec.answers)) {
       lines.push(id + ': ' + a.title);
-      const marks = !$$('.stop').some(s => s.dataset.id === id);      // the overview and the findings list
+      const marks = !$$('.stop').some(s => s.dataset.id === id);      // the overview and its findings
       for (const [name, picks] of Object.entries(a.picked))
         lines.push('  ' + (marks ? '' : (name === id ? 'answer' : name.slice(id.length + 1)) + ': ') + picks.map(p => p.label).join(' | '));
       if (a.deeper) lines.push('  go deeper: yes');
       if (a.note) lines.push('  note: ' + a.note);
     }
-    lines.push('', 'coverage:');
-    for (const c of rec.coverage) lines.push('  ' + c.name + ': ' + describe(c));
+    lines.push('', 'what the answers reach:');
+    for (const c of rec.coverage) lines.push('  ' + c.name + (c.main ? ' (main part)' : '') + ': ' + describe(c));
     return lines.join('\n');
   }
 
@@ -470,14 +513,14 @@
     const box = document.getElementById('coverage');
     box.replaceChildren(...cov.map(c => {
       const d = document.createElement('div'), name = document.createElement('span'), dots = document.createElement('span'), st = document.createElement('span');
-      d.dataset.state = c.state; name.className = 'name'; name.textContent = c.name; dots.className = 'dots'; st.className = 'state'; st.textContent = describe(c);
-      const m = document.createElement('i'); m.className = 'dot mark ' + ({ right: 'judged', closer: '', cannot: 'cannot' }[c.mark] || ''); m.title = c.mark ? 'marked ' + MARKS[c.mark] : 'not marked';
+      d.dataset.state = c.state; name.className = 'name'; name.textContent = c.name + (c.main ? ' · main part' : ''); dots.className = 'dots'; st.className = 'state'; st.textContent = describe(c);
+      const m = document.createElement('i'); m.className = 'dot mark ' + ({ right: 'answered', closer: '', cannot: 'cannot' }[c.mark] || ''); m.title = c.mark ? 'marked ' + MARKS[c.mark] : 'not marked';
       dots.append(m, ...Object.entries(c.stops).map(([id, s]) => { const i = document.createElement('i'); i.className = 'dot ' + s; i.title = id + ': ' + s; return i; }));
       d.append(name, dots, st);
       return d;
     }));
     const count = s => cov.filter(c => c.state === s).length, said = [];
-    for (const [s, w] of [['judged', 'judged'], ['partly', 'partly judged'], ['glanced', 'glanced at'], ['cannot', 'could not judge'], ['maker', 'left to the maker'], ['open', 'not reached yet']])
+    for (const [s, w] of [['answered', 'answered'], ['partly', 'partly answered'], ['glanced', 'glanced at'], ['cannot', 'could not judge'], ['maker', 'left to the maker'], ['open', 'not reached yet']])
       if (count(s)) said.push(count(s) + ' ' + w);
     document.getElementById('coverage-sum').textContent = 'Of ' + cov.length + ' parts: ' + said.join(', ') + '.';
   }
@@ -496,7 +539,7 @@
     if (receiver === false) where = 'No receiver reached: your answers are only in this browser. Copy them and give them to the agent.';
     else if (dirty) where = 'Saving…';
     else if (receiver) where = (sent ? 'Sent, and saved ' : 'Saved as a draft ') + 'on ' + receiver.host + ' in ' + receiver.file + ', ' + new Date(receiver.at).toLocaleTimeString() + '.';
-    status.textContent = answered + ' of ' + stops.length + ' stops · ' + reached + ' of ' + parts.length + ' parts covered. ' + (notice || where);
+    status.textContent = answered + ' of ' + stops.length + ' stops · ' + reached + ' of ' + parts.length + ' parts reached. ' + (notice || where);
     status.className = receiver === false ? 'bad' : '';
     notice = '';
   }
