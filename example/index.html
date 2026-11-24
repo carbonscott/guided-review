@@ -1,0 +1,427 @@
+<!doctype html>
+<!--
+  Wireframe of a review page for the guided-review skill.
+
+  Every line in [square brackets] is a slot: it says what goes there. Nothing here is
+  content. Copy this file into a new folder, put the evidence files beside it, fill the
+  slots, and repeat or remove blocks as the review needs.
+
+  Keep: the styles, the "Hand back" section, the bar at the bottom and the script.
+
+  What the script expects:
+    <div class="wrap" data-review="..." data-version="...">   a name for this review; the version of the work
+    <section class="stop" data-id="s1">       one stop; the script adds the ways out, "go deeper" and a note
+    <input name="s1" value="yes">             the main answer uses the stop's id as its name
+    <fieldset class="guess"> + <button class="show"> + <div class="reveal" hidden>   guess, then see
+    <section data-id="overview">, <ul data-id="findings">     marks; not counted as stops
+    data-label="..." on a mark's input        how that mark reads in the answers text
+
+  Answers are posted to "answers" beside the page on every change (see serve.py), which
+  saves them on the machine that serves the page. With no receiver the page still shows
+  the answers as text to copy.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[Review: name of the work]</title>
+<style>
+  :root {
+    --bg:#f3f6f7; --surface:#ffffff; --ink:#17212b; --dim:#586876; --line:#d3dbe1;
+    --accent:#0b6a86; --accent-soft:#e0f0f5; --on-accent:#ffffff;
+    --gap:#93510a; --gap-soft:#fcefd9; --ok:#1e6b45; --ok-soft:#e1f2e8; --bad:#a3312b; --bad-soft:#fbe6e4;
+    --sans:system-ui, -apple-system, "Segoe UI", sans-serif; --mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg:#0f151a; --surface:#172028; --ink:#e5ecf1; --dim:#9aa9b5; --line:#2b3843;
+    --accent:#62c3de; --accent-soft:#143440; --on-accent:#06202a;
+    --gap:#efc07a; --gap-soft:#37290f; --ok:#7fd3a4; --ok-soft:#12301f; --bad:#f09a94; --bad-soft:#3a1a18; color-scheme:dark } }
+
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 var(--sans); }
+  .wrap { max-width:44rem; margin:0 auto; padding:1.25rem 16px 9rem; }
+  h1 { font-size:1.6rem; line-height:1.2; margin:.2rem 0 .8rem; font-weight:600; }
+  h2 { font-size:1.15rem; margin:2.4rem 0 .3rem; font-weight:600; }
+  h3 { font-size:1.08rem; line-height:1.35; margin:.15rem 0 .7rem; font-weight:600; }
+  p { margin:.5rem 0; }
+  img { max-width:100%; }
+  .eyebrow, .tag { font:500 .74rem/1.4 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--accent); margin:0; }
+  .dim, figcaption, .src { color:var(--dim); font-size:.88rem; }
+  code, .mono { font-family:var(--mono); font-size:.9em; }
+  .banner { border-left:3px solid var(--gap); background:var(--gap-soft); color:var(--gap); padding:.6rem .9rem; margin:0 0 1.2rem; font-size:.93rem; }
+  .slot { border:1px dashed var(--line); border-radius:6px; background:var(--bg); color:var(--dim); display:flex; align-items:center; justify-content:center;
+          text-align:center; padding:1rem; min-height:7rem; font-size:.9rem; }
+
+  .facts { display:grid; grid-template-columns:auto 1fr; gap:.3rem 1rem; margin:0; font-size:.95rem; }
+  .facts dt { color:var(--dim); } .facts dd { margin:0; min-width:0; }
+
+  .parts { display:grid; grid-template-columns:repeat(auto-fit, minmax(17rem, 1fr)); gap:.8rem; margin-top:.8rem; }
+  .part { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.8rem; display:flex; flex-direction:column; gap:.5rem; min-width:0; }
+  .part h3 { margin:0; font-size:1rem; } .part p { margin:0; font-size:.92rem; }
+  .part img, .part .slot { border-radius:4px; width:100%; height:9rem; object-fit:cover; object-position:top; }
+  .part .big { font:500 1.5rem/1.1 var(--mono); color:var(--accent); height:9rem; display:flex; flex-direction:column; justify-content:center; gap:.3rem;
+               border:1px dashed var(--line); border-radius:4px; padding:.8rem; }
+  .part .big small { font:400 .85rem/1.3 var(--sans); color:var(--dim); }
+  .part .marks { margin-top:auto; display:flex; gap:.4rem; }
+
+  .stop { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem; margin:1rem 0; }
+  .said { display:grid; grid-template-columns:6.2rem 1fr; gap:.35rem .8rem; margin:0 0 .8rem; }
+  .said dt { color:var(--dim); font-size:.88rem; padding-top:.1rem; } .said dd { margin:0; min-width:0; }
+  figure { margin:.9rem 0; } figure img { border:1px solid var(--line); border-radius:6px; display:block; }
+
+  /* Three ready figures for a result: a split bar, labelled rows, a small table. */
+  .bar { display:flex; height:2.1rem; border-radius:5px; overflow:hidden; font:500 .85rem/2.1rem var(--mono); }
+  .bar span { text-align:center; white-space:nowrap; overflow:hidden; }
+  .bar .a { background:var(--accent); color:var(--on-accent); } .bar .b { background:var(--gap-soft); color:var(--gap); } .bar .c { background:var(--line); color:var(--ink); }
+  .key { display:flex; flex-wrap:wrap; gap:.2rem 1rem; margin-top:.4rem; font-size:.86rem; color:var(--dim); }
+  .rows { display:grid; gap:.35rem; }
+  .rows div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.8rem; align-items:center; padding:.45rem .7rem; border-radius:5px; background:var(--bg); font-size:.93rem; }
+  .pill { font:500 .8rem/1 var(--mono); padding:.3rem .5rem; border-radius:99px; white-space:nowrap; }
+  .pill.pass { background:var(--ok-soft); color:var(--ok); } .pill.fail { background:var(--bad-soft); color:var(--bad); } .pill.gapp { background:var(--gap-soft); color:var(--gap); }
+  .tbl { overflow-x:auto; } .tbl table { border-collapse:collapse; width:100%; font-size:.9rem; }
+  .tbl th, .tbl td { text-align:left; padding:.4rem .7rem .4rem 0; border-bottom:1px solid var(--line); vertical-align:top; } .tbl th { color:var(--dim); font-weight:500; }
+
+  fieldset { border:0; padding:0; margin:.9rem 0 .2rem; min-width:0; }
+  legend { font-weight:600; padding:0; margin-bottom:.45rem; }
+  .choices { display:flex; flex-wrap:wrap; gap:.45rem; } .choices.stack { flex-direction:column; }
+  label.opt { border:1px solid var(--line); border-radius:7px; padding:.5rem .85rem; cursor:pointer; display:flex; gap:.5rem; align-items:center; min-height:2.6rem; }
+  label.chip { border:1px solid var(--line); border-radius:99px; padding:.25rem .7rem; cursor:pointer; font-size:.85rem; color:var(--dim); display:inline-flex; gap:.4rem; align-items:center; }
+  label:has(input:checked) { background:var(--accent-soft); border-color:var(--accent); color:var(--ink); }
+  input[type=radio], input[type=checkbox] { accent-color:var(--accent); margin:0; }
+  .extras { border-top:1px dashed var(--line); margin-top:.9rem; padding-top:.7rem; display:flex; flex-wrap:wrap; gap:.4rem; }
+  textarea { width:100%; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:.5rem .6rem; }
+  details.ev { margin-top:.8rem; font-size:.9rem; } details summary { cursor:pointer; color:var(--accent); }
+  pre { font:.8rem/1.5 var(--mono); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:.6rem .7rem; overflow-x:auto; margin:.5rem 0; }
+  button { font:500 .95rem var(--sans); padding:.55rem .95rem; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); cursor:pointer; }
+  button.plain { background:transparent; color:var(--accent); } button:disabled { opacity:.45; cursor:default; }
+
+  .findings { list-style:none; padding:0; margin:.6rem 0; display:grid; gap:.5rem; }
+  .findings li { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.65rem .8rem; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.3rem .8rem; align-items:start; }
+  .findings .where { grid-column:1 / -1; font:500 .7rem var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--dim); }
+  ul.plain { padding-left:1.1rem; margin:.4rem 0; } ul.plain li { margin:.3rem 0; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem; margin:.8rem 0; }
+  .panel h3 { font-size:.95rem; margin:.9rem 0 .2rem; } .panel h3:first-child { margin-top:0; }
+
+  #bar { position:fixed; left:0; right:0; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:.6rem 16px; }
+  #bar > div { max-width:44rem; margin:0 auto; display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; }
+  #status { flex:1 1 12rem; font-size:.88rem; color:var(--dim); min-width:0; overflow-wrap:anywhere; } #status.bad { color:var(--gap); }
+  @media (max-width:30rem) { .said { grid-template-columns:1fr; gap:.1rem; } .said dd { margin-bottom:.4rem; } }
+</style>
+</head>
+<body>
+<div class="wrap" data-review="wireframe" data-version="[version and date of the work]">
+
+<p class="banner">Wireframe. Every line in [square brackets] is a slot that says what goes there. Nothing on this page is content.</p>
+
+<p class="eyebrow">Guided review</p>
+<h1>[Name of the work under review]</h1>
+<dl class="facts">
+  <dt>Under review</dt><dd>[What exactly was looked at: its version and date.]</dd>
+  <dt>Asked for</dt><dd>[What was asked for, in the reviewer's own words where they exist. One or two sentences.]</dd>
+  <dt>Level</dt><dd>[Outcome, design, details: the ones the reviewer chose.]</dd>
+  <dt>Budget</dt><dd>[N minutes: N stops to answer, then N findings to skim.]</dd>
+</dl>
+
+<h2>What was made</h2>
+<p class="dim">[How many parts, and what is new or changed.] Mark any part you want a closer look at.</p>
+<section class="parts" data-id="overview">
+  <article class="part">
+    <div class="slot">[A picture of this part: the real screen, plot or output. An &lt;img&gt; goes here.]</div>
+    <h3>[Part name]</h3>
+    <p>[What this part is, in one or two sentences. Say whether it is new or changed.]</p>
+    <div class="marks"><label class="chip"><input type="radio" name="overview.part-1" value="closer" data-label="[Part name]: look closer"> Look closer</label><label class="chip"><input type="radio" name="overview.part-1" value="fine" data-label="[Part name]: no concern"> No concern</label></div>
+  </article>
+  <article class="part">
+    <div class="big">[N of M]<small>[the one number that sizes this part, when no picture exists]</small></div>
+    <h3>[Part name]</h3>
+    <p>[What this part is, in one or two sentences.]</p>
+    <div class="marks"><label class="chip"><input type="radio" name="overview.part-2" value="closer" data-label="[Part name]: look closer"> Look closer</label><label class="chip"><input type="radio" name="overview.part-2" value="fine" data-label="[Part name]: no concern"> No concern</label></div>
+  </article>
+</section>
+
+<h2>[N] stops</h2>
+<p class="dim">Each one says what was asked and what is there, then asks one thing about you. Put your reasons in the note.</p>
+
+<!-- Form 1. Is this what you meant? A quick mark. The most common form. -->
+<section class="stop" data-id="s1">
+  <p class="tag">Stop 1 · [Level] · Is this what you meant?</p>
+  <h3>[The finding, stated as a fact, in one line.]</h3>
+  <dl class="said">
+    <dt>Asked for</dt><dd>[Their own words, quoted.]</dd>
+    <dt>What is there</dt><dd>[What was made, in about 50 words. Numbers, not adjectives. No verdict.]</dd>
+  </dl>
+  <figure>
+    <div class="slot">[One figure: a picture of the made thing, or the one result that carries the point. The split bar, the labelled rows and the small table in the styles are ready for results.]</div>
+    <figcaption>[Where it came from, in one line.]</figcaption>
+  </figure>
+  <fieldset><legend>[Is this what you meant by "..."?]</legend><div class="choices">
+    <label class="opt"><input type="radio" name="s1" value="yes"> Yes</label>
+    <label class="opt"><input type="radio" name="s1" value="partly"> Partly</label>
+    <label class="opt"><input type="radio" name="s1" value="no"> No</label>
+  </div></fieldset>
+  <details class="ev"><summary>See the evidence</summary>
+    <pre>[The raw excerpt: log lines, output, changed lines. Exactly as in the source.]</pre>
+    <p class="src">[Source: file and lines, run, commit, date.]</p>
+  </details>
+</section>
+
+<!-- Form 2. Which did you mean? Two or three plain meanings, with no reasons attached. -->
+<section class="stop" data-id="s2">
+  <p class="tag">Stop 2 · [Level] · Is this what you meant?</p>
+  <h3>[The finding, stated as a fact, in one line.]</h3>
+  <dl class="said">
+    <dt>Asked for</dt><dd>[Their own words, quoted. Words that can be read two ways.]</dd>
+    <dt>What is there</dt><dd>[Which reading the work took, and what that looks like. About 50 words.]</dd>
+  </dl>
+  <figure><div class="rows">
+    <div><span>[One line of the result]</span><span class="pill gapp">[its number]</span></div>
+    <div><span>[One line of the result]</span><span class="pill gapp">[its number]</span></div>
+  </div></figure>
+  <fieldset><legend>[Which did you mean?]</legend><div class="choices stack">
+    <label class="opt"><input type="radio" name="s2" value="a"> [One plain thing they might have meant]</label>
+    <label class="opt"><input type="radio" name="s2" value="b"> [Another plain thing they might have meant]</label>
+    <label class="opt"><input type="radio" name="s2" value="unthought"> I had not thought about it</label>
+  </div></fieldset>
+  <details class="ev"><summary>See the evidence</summary>
+    <pre>[The raw excerpt.]</pre>
+    <p class="src">[Source.]</p>
+  </details>
+</section>
+
+<!-- Form 3. Guess first. Rare: only for a size, a count or a time they have a feel for. The guess locks. -->
+<section class="stop" data-id="s3">
+  <p class="tag">Stop 3 · [Level] · Is this what you pictured? · Guess first</p>
+  <h3>[The subject, named without giving the result away.]</h3>
+  <dl class="said">
+    <dt>Asked for</dt><dd>[Their own words, quoted.]</dd>
+    <dt>What is there</dt><dd>[Enough to make the guess fair. Not the result.]</dd>
+  </dl>
+  <fieldset class="guess"><legend>[Before you look: how many / how long / how much ...?]</legend><div class="choices">
+    <label class="opt"><input type="radio" name="s3.guess" value="low"> [A range]</label>
+    <label class="opt"><input type="radio" name="s3.guess" value="mid"> [A range]</label>
+    <label class="opt"><input type="radio" name="s3.guess" value="high"> [A range]</label>
+  </div></fieldset>
+  <button type="button" class="show" disabled>Lock my guess and show the result</button>
+  <div class="reveal" hidden>
+    <figure class="tbl"><table>
+      <tr><th>[Column]</th><th>[Column]</th><th>[Column]</th></tr>
+      <tr><td>[The real result]</td><td>[...]</td><td>[...]</td></tr>
+    </table><figcaption>[Where it came from, in one line.]</figcaption></figure>
+    <fieldset><legend>[Is this what you meant by "..."?]</legend><div class="choices">
+      <label class="opt"><input type="radio" name="s3" value="yes"> Yes</label>
+      <label class="opt"><input type="radio" name="s3" value="partly"> Partly</label>
+      <label class="opt"><input type="radio" name="s3" value="no"> No</label>
+    </div></fieldset>
+    <details class="ev"><summary>See the evidence</summary>
+      <pre>[The raw excerpt.]</pre>
+      <p class="src">[Source.]</p>
+    </details>
+  </div>
+</section>
+
+<!-- Form 4. Does this look right? Their knowledge of the field judges a result or a check. -->
+<section class="stop" data-id="s4">
+  <p class="tag">Stop 4 · [Level] · Does this look right?</p>
+  <h3>[The finding, stated as a fact, in one line.]</h3>
+  <dl class="said">
+    <dt>Asked for</dt><dd>[Their own words, or the claim the work makes.]</dd>
+    <dt>What is there</dt><dd>[The result or the check as it is. About 50 words.]</dd>
+  </dl>
+  <figure><div class="rows">
+    <div><span>[What ran]</span><span class="pill fail">[FAIL · n of m]</span></div>
+    <div><span>[What ran]</span><span class="pill pass">[PASS · n of m]</span></div>
+  </div></figure>
+  <fieldset><legend>[Does this look right as ...?]</legend><div class="choices">
+    <label class="opt"><input type="radio" name="s4" value="right"> Looks right</label>
+    <label class="opt"><input type="radio" name="s4" value="wrong"> Looks wrong</label>
+  </div></fieldset>
+  <details class="ev"><summary>See the evidence</summary>
+    <pre>[The raw excerpt.]</pre>
+    <p class="src">[Source.]</p>
+  </details>
+</section>
+
+<h2>[N] more findings</h2>
+<p class="dim">Places where the work differs from the words of the request. They need no answer. Tick any you want as a stop in a second round.</p>
+<ul class="findings" data-id="findings">
+  <li><span class="where">[Part name]</span><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span><label class="chip"><input type="checkbox" name="findings.f1" value="closer" data-label="[The finding, in a few words]"> Look closer</label></li>
+  <li><span class="where">[Part name]</span><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span><label class="chip"><input type="checkbox" name="findings.f2" value="closer" data-label="[The finding, in a few words]"> Look closer</label></li>
+</ul>
+
+<h2>Not looked at</h2>
+<ul class="plain">
+  <li>[What this review left out, one line each, with the reason.]</li>
+</ul>
+
+<h2>Decisions that are waiting</h2>
+<p class="dim">Not part of this review. They are about what happens next, so they are listed and not asked.</p>
+<ul class="plain">
+  <li>[An open issue, a loose end, a choice about what to do next. One line each.]</li>
+</ul>
+
+<h2>Checked for you</h2>
+<div class="panel">
+  <p class="dim">[When and from what this was checked, and what was not rerun.]</p>
+  <h3>Does not match its evidence</h3>
+  <ul class="plain"><li>[A claim, and what its evidence shows instead.]</li></ul>
+  <h3>Holds</h3>
+  <ul class="plain"><li>[What was checked and found true.]</li></ul>
+  <h3>Could not check</h3>
+  <ul class="plain"><li>[What could not be checked, and why.]</li></ul>
+</div>
+
+<!-- Keep everything from here down. -->
+<h2>Hand back</h2>
+<div class="panel">
+  <p>Your answers are saved as you give them, on the machine that serves this page. <b>Save</b> does it at once and shows where the file is. Press <b>Send</b> when you are done, and tell the agent you have sent. You can stop part way and come back: what you did not answer counts as not reviewed.</p>
+  <p><button type="button" class="plain" id="copy">Copy answers</button></p>
+  <label for="record" class="dim">Your answers as text</label>
+  <textarea id="record" rows="10" readonly></textarea>
+</div>
+
+</div>
+<div id="bar"><div><span id="status" role="status"></span><button type="button" class="plain" id="save">Save</button><button type="button" id="send">Send</button></div></div>
+
+<script>
+(() => {
+  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+  const meta = document.querySelector('.wrap').dataset;
+  const key = 'guided-review:' + meta.review;
+  const status = document.getElementById('status');
+  const recordBox = document.getElementById('record');
+  let receiver = null;      // null: not tried yet; false: none reached; otherwise the receiver's last reply
+  let sent = false, dirty = false, notice = '', timer;
+
+  // Every stop gets the same ways out, "go deeper" and a note.
+  for (const stop of $$('.stop')) {
+    const id = stop.dataset.id;
+    const extras = document.createElement('div');
+    extras.className = 'extras';
+    extras.innerHTML =
+      `<label class="chip"><input type="checkbox" name="${id}.out" value="cannot-tell"> I cannot tell from this</label>
+       <label class="chip"><input type="checkbox" name="${id}.out" value="makers-call"> Not my concern</label>
+       <label class="chip"><input type="checkbox" name="${id}.deeper" value="yes"> Go deeper</label>
+       <textarea name="${id}.note" rows="1" placeholder="Note (optional): your reason, or what you meant" aria-label="Note for this stop"></textarea>`;
+    stop.insertBefore(extras, stop.querySelector(':scope > details.ev'));
+  }
+
+  function reveal(stop) {
+    stop.querySelector('.reveal').hidden = false;
+    stop.querySelector('.show').hidden = true;
+    $$('.guess input', stop).forEach(i => i.disabled = true);
+  }
+
+  function collect() {
+    const answers = {};
+    for (const el of $$('[data-id]')) {
+      const id = el.dataset.id, a = { title: (el.querySelector(':scope > h3') || {}).textContent || id, picked: {} };
+      for (const i of $$('input:checked', el)) {
+        if (i.name === id + '.deeper') a.deeper = true;
+        else (a.picked[i.name] = a.picked[i.name] || []).push({ value: i.value, label: i.dataset.label || i.closest('label').textContent.trim() });
+      }
+      const note = el.querySelector('.extras textarea');
+      if (note && note.value.trim()) a.note = note.value.trim();
+      const rev = el.querySelector('.reveal');
+      if (rev && !rev.hidden) a.revealed = true;
+      if (Object.keys(a.picked).length || a.note || a.deeper) answers[id] = a;
+    }
+    return { review: meta.review, version: meta.version, saved_at: new Date().toISOString(), done: sent, answers };
+  }
+
+  function restore(rec) {
+    if (!rec || rec.review !== meta.review || rec.version !== meta.version) return false;
+    for (const [id, a] of Object.entries(rec.answers || {})) {
+      const el = $$('[data-id]').find(e => e.dataset.id === id);
+      if (!el) continue;
+      const tick = (name, value) => { const i = $$('input', el).find(i => i.name === name && i.value === value); if (i) i.checked = true; };
+      for (const [name, picks] of Object.entries(a.picked || {})) picks.forEach(p => tick(name, p.value));
+      if (a.deeper) tick(id + '.deeper', 'yes');
+      const note = el.querySelector('.extras textarea');
+      if (a.note && note) note.value = a.note;
+      if (a.revealed && el.querySelector('.reveal')) reveal(el);
+    }
+    sent = rec.done === true;
+    return true;
+  }
+
+  function asText(rec) {
+    const lines = ['review: ' + rec.review, 'version: ' + rec.version, 'status: ' + (rec.done ? 'sent' : 'draft'), ''];
+    for (const [id, a] of Object.entries(rec.answers)) {
+      lines.push(id + ': ' + a.title);
+      const marks = !$$('.stop').some(s => s.dataset.id === id);      // the overview and the findings list
+      for (const [name, picks] of Object.entries(a.picked))
+        lines.push('  ' + (marks ? '' : (name === id ? 'answer' : name.slice(id.length + 1)) + ': ') + picks.map(p => p.label).join(' | '));
+      if (a.deeper) lines.push('  go deeper: yes');
+      if (a.note) lines.push('  note: ' + a.note);
+    }
+    return lines.join('\n');
+  }
+
+  function render() {
+    for (const stop of $$('.stop')) {
+      const show = stop.querySelector('.show');
+      if (show) show.disabled = !stop.querySelector('.guess input:checked');
+    }
+    const rec = collect(), stops = $$('.stop');
+    const answered = stops.filter(s => rec.answers[s.dataset.id]).length;
+    recordBox.value = asText(rec);
+    let where = '';
+    if (receiver === false) where = 'No receiver reached: your answers are only in this browser. Copy them and give them to the agent.';
+    else if (dirty) where = 'Saving…';
+    else if (receiver) where = (sent ? 'Sent, and saved ' : 'Saved as a draft ') + 'on ' + receiver.host + ' in ' + receiver.file + ', ' + new Date(receiver.at).toLocaleTimeString() + '.';
+    status.textContent = answered + ' of ' + stops.length + ' stops answered. ' + (notice || where);
+    status.className = receiver === false ? 'bad' : '';
+    notice = '';
+  }
+
+  async function save() {
+    clearTimeout(timer);
+    const rec = collect();
+    try { localStorage.setItem(key, JSON.stringify(rec)); } catch (e) {}
+    try {
+      const r = await fetch('answers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rec) });
+      if (!r.ok) throw 0;
+      receiver = await r.json();
+      dirty = false;
+    } catch (e) { receiver = false; }
+    render();
+  }
+
+  function changed() { sent = false; dirty = true; render(); clearTimeout(timer); timer = setTimeout(save, 400); }
+
+  document.addEventListener('change', e => {
+    const i = e.target, stop = i.closest && i.closest('.stop');
+    if (stop && i.matches('input') && i.checked) {          // a way out replaces the answer, and an answer replaces a way out
+      const out = stop.dataset.id + '.out', deeper = stop.dataset.id + '.deeper';
+      for (const o of $$('input', stop)) {
+        if (o === i || o.disabled || o.name === deeper) continue;
+        if (i.name === out || (i.name !== deeper && o.name === out)) o.checked = false;
+      }
+    }
+    if (i.matches && i.matches('input')) changed();
+  });
+  document.addEventListener('input', e => { if (e.target.matches('.extras textarea')) changed(); });
+  document.addEventListener('click', e => {
+    if (e.target.matches('.show')) { reveal(e.target.closest('.stop')); changed(); }
+  });
+  document.getElementById('save').addEventListener('click', save);
+  document.getElementById('send').addEventListener('click', () => { sent = true; save(); });
+  document.getElementById('copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(recordBox.value); notice = 'Copied. Paste it to the agent.'; }
+    catch (e) { recordBox.focus(); recordBox.select(); notice = 'Copying is blocked here. The text is selected below: copy it by hand.'; }
+    render();
+  });
+
+  // Start from the answers the receiver holds; without one, from this browser's own copy.
+  (async () => {
+    let rec = null;
+    try { const r = await fetch('answers.json', { cache: 'no-store' }); if (r.ok) rec = await r.json(); } catch (e) {}
+    if (restore(rec)) notice = 'Your saved answers are loaded' + (sent ? ', as sent.' : '.');
+    else { try { restore(JSON.parse(localStorage.getItem(key))); } catch (e) {} }
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
