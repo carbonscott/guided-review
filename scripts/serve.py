@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Serve one review folder and collect the reviewer's answers.
 
-    python3 serve.py <review folder> [--port 8765] [--until-sent]
+    python3 scripts/serve.py <review folder> [--port 8765] [--until-sent]
 
 The folder holds the review page as index.html, with its evidence files beside it.
 The page posts the reviewer's answers to /answers. This script writes them to:

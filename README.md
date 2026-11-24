@@ -15,8 +15,8 @@ directions name no product or host on purpose, so they stay true as those change
 | File | What it is |
 |---|---|
 | `SKILL.md` | The directions |
-| `example/index.html` | A wireframe of a review page: every part in its place, each slot labelled, no content. Its inputs, saving and copying work. Copy it and fill the slots. |
-| `serve.py` | A small server that serves one review folder and saves the answers to a file. Python standard library only. |
+| `assets/review-page.html` | A wireframe of a review page: every part in its place, each slot labelled, no content. Its inputs, saving and copying work. Copy it and fill the slots. |
+| `scripts/serve.py` | A small server that serves one review folder and saves the answers to a file. Python standard library only. |
 
 ## Install
 
@@ -32,8 +32,9 @@ Then say "help me review this", or type `/guided-review`.
 ## Try the example
 
 ```sh
-cp -r example /tmp/review-example
-python3 serve.py /tmp/review-example            # then open http://localhost:8765/
+mkdir /tmp/review-example
+cp assets/review-page.html /tmp/review-example/index.html
+python3 scripts/serve.py /tmp/review-example     # then open http://localhost:8765/
 ```
 
 From another machine, forward the port first:

@@ -160,14 +160,14 @@ would not want there.
 
 Two files, as one way to do the above. The directions hold without them.
 
-- `example/index.html` is a wireframe of a review page: every part in its place, each slot
-  labelled with what goes there, and no content. Its inputs, saving and copying work. Copy
-  it into a new folder with the evidence files beside it and fill the slots. Its first
-  lines say what to keep.
-- `serve.py` serves that folder from the machine where you work and writes the answers to
-  `answers.json` there, with every save kept in `answers.log`. It listens on that machine
-  only, so a reviewer elsewhere forwards the port. Give them the address and that one line.
-  `python3 serve.py --help` has the rest.
+- `assets/review-page.html` is a wireframe of a review page: every part in its place, each
+  slot labelled with what goes there, and no content. Its inputs, saving and copying work.
+  Copy it into a new folder as `index.html`, put the evidence files beside it, and fill
+  the slots. Its first lines say what to keep.
+- `scripts/serve.py` serves that folder from the machine where you work and writes the
+  answers to `answers.json` there, with every save kept in `answers.log`. It listens on
+  that machine only, so a reviewer elsewhere forwards the port. Give them the address and
+  that one line. `python3 scripts/serve.py --help` has the rest.
 
 Keep the folder somewhere that lasts. Read the answers from the file once it says
 `"done": true`.
