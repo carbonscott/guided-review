@@ -18,13 +18,16 @@ from html.parser import HTMLParser
 
 # Pass marks. They come from one page a reviewer approved: 7 stops, a median of 70 words
 # of "asked for / what is there" (longest 82), a median of 134 visible words per stop
-# (longest 178), one guess-first stop, and a longest choice of 9 words.
+# (longest 178), one guess-first stop, and a longest choice of 9 words. The checks on
+# parts (every stop and finding in a part, a coverage view) came later, with the idea that
+# a review states what it covered; that page predates them.
 MIN_STOPS, MAX_STOPS = 3, 10
 MAX_SAID_WORDS = 100
 MAX_VISIBLE_MEDIAN, MAX_VISIBLE_WORDS = 160, 220
 MAX_GUESS_FIRST = 2
 MAX_CHOICE_WORDS = 12
 MIN_FINDINGS = 3
+MIN_PARTS, MAX_PARTS = 3, 7
 PLAN = re.compile(r"\b(what|when|which|how|who)\b[^?.]{0,40}\bshould\b(?!n['’]t)|\bshould (we|i|it|they|this|these)\b|\bdo next\b|\bwhat to do\b", re.I)
 SLOT = re.compile(r"\[[A-Z][^\[\]]{6,}\]")
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
@@ -113,6 +116,7 @@ def measure(path):
                    if not n.inside(folded) and not n.inside(is_tag("fieldset"))]
         stops.append({
             "id": s.attrs.get("data-id", "?"),
+            "part": s.attrs.get("data-part"),
             "title": heads[0].text() if heads else "",
             "said_words": words(said[0].text()) if said else None,
             "visible_words": words(s.text(skip=lambda n: n.tag == "details" or "extras" in n.classes())),
@@ -127,6 +131,8 @@ def measure(path):
         })
     visible = root.text()
     parts = root.find(has("part"))
+    part_ids = [p.attrs.get("data-part") for p in parts]
+    finding_parts = [li.attrs.get("data-part") for f in root.find(has("findings")) for li in f.find(is_tag("li"))]
     images = [n.attrs.get("src", "") for n in root.find(is_tag("img"))]
     local = [s for s in images if s and not re.match(r"[a-z]+:", s)]
     ids = {n.attrs.get("id") for n in root.walk() if n.attrs.get("id")}
@@ -135,9 +141,11 @@ def measure(path):
         "stops": stops,
         "findings": sum(len(f.find(is_tag("li"))) for f in root.find(has("findings"))),
         "parts": len(parts),
+        "part_ids": part_ids,
+        "finding_parts": finding_parts,
         "parts_shown": len([p for p in parts if p.find(lambda n: n.tag == "img" or "big" in n.classes())]),
         "decisions_listed": any(re.search(r"decisions", h.text(), re.I) for h in root.find(is_tag("h2", "h3"))),
-        "hand_back": sorted({"save", "send", "copy", "record"} & ids),
+        "hand_back": sorted({"save", "send", "copy", "record", "coverage"} & ids),
         "posts_answers": "fetch(" in script,
         "slots_left": len(SLOT.findall(visible)) + len(root.find(has("slot"))),
         "missing_pictures": [s for s in local if not os.path.exists(os.path.join(here, s))],
@@ -180,16 +188,24 @@ def grade(m):
                f"{len(plans)} planning questions" + (", e.g. " + plans[0][0] + " '" + plans[0][1][:70] + "'" if plans else ""))
         expect("Every stop shows a figure in view", all(s["figure_in_view"] for s in stops),
                "missing in: " + (", ".join(s["id"] for s in stops if not s["figure_in_view"]) or "none"))
+        homeless = [s["id"] for s in stops if not s["part"] or s["part"] not in m["part_ids"]]
+        expect("Every stop belongs to a part shown in the overview", not homeless,
+               "without a part: " + (", ".join(homeless) or "none"))
         expect("Raw evidence is folded away in every stop",
                all(s["evidence_folded"] and not s["pre_in_view"] for s in stops),
                f"{sum(s['pre_in_view'] for s in stops)} raw blocks in view; no fold in: "
                + (", ".join(s["id"] for s in stops if not s["evidence_folded"]) or "none"))
     expect(f"Other findings sit in a list that needs no answer (at least {MIN_FINDINGS})", m["findings"] >= MIN_FINDINGS,
            f"{m['findings']} findings listed")
+    expect(f"The overview shows every part: {MIN_PARTS} to {MAX_PARTS}, each with an id", MIN_PARTS <= m["parts"] <= MAX_PARTS
+           and all(m["part_ids"]) and len(set(m["part_ids"])) == m["parts"], f"{m['parts']} parts, ids: {', '.join(str(i) for i in m['part_ids'])}")
     expect("Every part in the overview shows a picture or a number", m["parts"] >= 2 and m["parts_shown"] == m["parts"],
            f"{m['parts_shown']} of {m['parts']} parts")
+    stray = [p for p in m["finding_parts"] if not p or p not in m["part_ids"]]
+    expect("Every finding names its part", m["finding_parts"] and not stray,
+           f"{len(m['finding_parts'])} findings, {len(stray)} without a known part")
     expect("Plans are listed, not asked: a decisions list exists", m["decisions_listed"], "heading found" if m["decisions_listed"] else "no such heading")
-    expect("The page can take answers and hand them back", len(m["hand_back"]) == 4 and m["posts_answers"],
+    expect("The page can take answers, show their coverage and hand them back", len(m["hand_back"]) == 5 and m["posts_answers"],
            "present: " + (", ".join(m["hand_back"]) or "none") + ("; posts answers" if m["posts_answers"] else "; does not post answers"))
     expect("No wireframe slot is left unfilled", m["slots_left"] == 0, f"{m['slots_left']} slots left")
     expect("Every picture the page points to is beside it", not m["missing_pictures"],
@@ -201,9 +217,11 @@ def transcript_mentions(path, forbidden):
     hits = []
     for line in open(path, encoding="utf-8", errors="replace"):
         try:
-            content = (json.loads(line).get("message") or {}).get("content")
+            d = json.loads(line)
         except ValueError:
             continue
+        msg = d.get("message") if isinstance(d, dict) else None
+        content = msg.get("content") if isinstance(msg, dict) else None
         for block in content if isinstance(content, list) else []:
             if isinstance(block, dict) and block.get("type") == "tool_use":
                 call = json.dumps(block.get("input"))
@@ -236,7 +254,7 @@ def main():
         print(f"{'PASS' if e['passed'] else 'FAIL'}  {e['text']}\n      {e['evidence']}")
     print(f"\n{passed} of {len(expectations)} passed")
     for s in m["stops"]:
-        print(f"  {s['id']:>5}  said {str(s['said_words']):>4}  visible {s['visible_words']:>4}  "
+        print(f"  {s['id']:>5}  {str(s['part']):>4}  said {str(s['said_words']):>4}  visible {s['visible_words']:>4}  "
               f"{'guess-first ' if s['guess_first'] else ''}{s['title'][:70]}")
 
 

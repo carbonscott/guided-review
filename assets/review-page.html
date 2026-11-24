@@ -6,24 +6,27 @@
   content. Copy this file into a new folder as index.html, put the evidence files beside
   it, fill the slots, and repeat or remove blocks as the review needs.
 
-  Keep: the styles, the "Hand back" section, the bar at the bottom and the script.
+  Keep: the styles, the "What your review covers" and "Hand back" sections, the bar at the
+  bottom and the script.
 
-  What the script expects:
+  What the script expects, and what it adds:
     <div class="wrap" data-review="..." data-version="...">   a name for this review; the version of the work
-    <section class="stop" data-id="s1">       one stop; the script adds the ways out, "go deeper" and a note
-    <input name="s1" value="yes">             the main answer uses the stop's id as its name
+    <article class="part" data-part="p1">      one part of the work; the script adds its three marks
+    <section class="stop" data-id="s1" data-part="p1">   one stop, in one part; the script adds the
+                                               signals, the ways out, "go deeper" and a note
+    <input name="s1" value="yes">              the main answer uses the stop's id as its name
     <fieldset class="guess"> + <button class="show"> + <div class="reveal" hidden>   guess, then see
-    <section data-id="overview">, <ul data-id="findings">     marks; not counted as stops
-    data-label="..." on a mark's input        how that mark reads in the answers text
+    <li data-part="p1"> in <ul class="findings">   one finding; the script adds its part and a tick
+    <div id="coverage">                        the script shows what the answers cover, part by part
 
   Answers are posted to "answers" beside the page on every change (see scripts/serve.py), which
-  saves them on the machine that serves the page. With no receiver the page still shows
-  the answers as text to copy.
+  saves them on the machine that serves the page, coverage included. With no receiver the page
+  still shows the answers as text to copy.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>[Review: name of the work]</title>
 <style>
   :root {
@@ -32,20 +35,26 @@
     --gap:#93510a; --gap-soft:#fcefd9; --ok:#1e6b45; --ok-soft:#e1f2e8; --bad:#a3312b; --bad-soft:#fbe6e4;
     --sans:system-ui, -apple-system, "Segoe UI", sans-serif; --mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
-  @media (prefers-color-scheme: dark) { :root {
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
     --bg:#0f151a; --surface:#172028; --ink:#e5ecf1; --dim:#9aa9b5; --line:#2b3843;
     --accent:#62c3de; --accent-soft:#143440; --on-accent:#06202a;
     --gap:#efc07a; --gap-soft:#37290f; --ok:#7fd3a4; --ok-soft:#12301f; --bad:#f09a94; --bad-soft:#3a1a18; color-scheme:dark } }
+  :root[data-theme="dark"] {
+    --bg:#0f151a; --surface:#172028; --ink:#e5ecf1; --dim:#9aa9b5; --line:#2b3843;
+    --accent:#62c3de; --accent-soft:#143440; --on-accent:#06202a;
+    --gap:#efc07a; --gap-soft:#37290f; --ok:#7fd3a4; --ok-soft:#12301f; --bad:#f09a94; --bad-soft:#3a1a18; color-scheme:dark }
 
   * { box-sizing:border-box; }
   [hidden] { display:none !important; }
   body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 var(--sans); }
-  .wrap { max-width:44rem; margin:0 auto; padding:1.25rem 16px 9rem; }
+  .wrap { max-width:44rem; margin:0 auto; padding-block:1.25rem 9rem;
+          padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
   h1 { font-size:1.6rem; line-height:1.2; margin:.2rem 0 .8rem; font-weight:600; }
   h2 { font-size:1.15rem; margin:2.4rem 0 .3rem; font-weight:600; }
   h3 { font-size:1.08rem; line-height:1.35; margin:.15rem 0 .7rem; font-weight:600; }
   p { margin:.5rem 0; }
   img { max-width:100%; }
+  a { color:var(--accent); }
   .eyebrow, .tag { font:500 .74rem/1.4 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--accent); margin:0; }
   .dim, figcaption, .src { color:var(--dim); font-size:.88rem; }
   code, .mono { font-family:var(--mono); font-size:.9em; }
@@ -63,7 +72,7 @@
   .part .big { font:500 1.5rem/1.1 var(--mono); color:var(--accent); height:9rem; display:flex; flex-direction:column; justify-content:center; gap:.3rem;
                border:1px dashed var(--line); border-radius:4px; padding:.8rem; }
   .part .big small { font:400 .85rem/1.3 var(--sans); color:var(--dim); }
-  .part .marks { margin-top:auto; display:flex; gap:.4rem; }
+  .part .marks { margin-top:auto; display:flex; flex-wrap:wrap; gap:.35rem; }
 
   .stop { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem; margin:1rem 0; }
   .said { display:grid; grid-template-columns:6.2rem 1fr; gap:.35rem .8rem; margin:0 0 .8rem; }
@@ -89,7 +98,9 @@
   label.chip { border:1px solid var(--line); border-radius:99px; padding:.25rem .7rem; cursor:pointer; font-size:.85rem; color:var(--dim); display:inline-flex; gap:.4rem; align-items:center; }
   label:has(input:checked) { background:var(--accent-soft); border-color:var(--accent); color:var(--ink); }
   input[type=radio], input[type=checkbox] { accent-color:var(--accent); margin:0; }
-  .extras { border-top:1px dashed var(--line); margin-top:.9rem; padding-top:.7rem; display:flex; flex-wrap:wrap; gap:.4rem; }
+  .extras { border-top:1px dashed var(--line); margin-top:.9rem; padding-top:.7rem; display:grid; gap:.5rem; }
+  .extras > div { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+  .extras .lead { font-size:.82rem; color:var(--dim); margin-right:.2rem; }
   textarea { width:100%; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:.5rem .6rem; }
   details.ev { margin-top:.8rem; font-size:.9rem; } details summary { cursor:pointer; color:var(--accent); }
   pre { font:.8rem/1.5 var(--mono); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:.6rem .7rem; overflow-x:auto; margin:.5rem 0; }
@@ -103,7 +114,22 @@
   .panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem; margin:.8rem 0; }
   .panel h3 { font-size:.95rem; margin:.9rem 0 .2rem; } .panel h3:first-child { margin-top:0; }
 
-  #bar { position:fixed; left:0; right:0; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:.6rem 16px; }
+  /* What the answers cover: one row per part, one dot per stop. */
+  .cov { display:grid; gap:.3rem; margin:.6rem 0; }
+  .cov > div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.1rem .8rem; align-items:center; padding:.5rem .7rem; border-radius:6px; background:var(--bg); border-left:3px solid var(--line); }
+  .cov .name { font-weight:500; font-size:.93rem; min-width:0; }
+  .cov .state { grid-column:1 / -1; font-size:.84rem; color:var(--dim); }
+  .cov > div[data-state="judged"] { border-left-color:var(--ok); }
+  .cov > div[data-state="partly"], .cov > div[data-state="glanced"] { border-left-color:var(--accent); }
+  .cov > div[data-state="cannot"] { border-left-color:var(--gap); }
+  .dots { display:flex; gap:.25rem; }
+  .dot { width:.8rem; height:.8rem; border-radius:50%; border:1.5px solid var(--dim); display:inline-block; }
+  .dot.judged { background:var(--ok); border-color:var(--ok); } .dot.cannot { background:var(--gap); border-color:var(--gap); }
+  .dot.maker { background:var(--line); border-color:var(--line); } .dot.mark { border-radius:2px; }
+  .legend { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.82rem; color:var(--dim); } .legend span { display:inline-flex; gap:.35rem; align-items:center; }
+
+  #bar { position:fixed; left:0; right:0; bottom:0; background:var(--surface); border-top:1px solid var(--line);
+         padding:.6rem max(16px, env(safe-area-inset-right, 0px)) calc(.6rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
   #bar > div { max-width:44rem; margin:0 auto; display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; }
   #status { flex:1 1 12rem; font-size:.88rem; color:var(--dim); min-width:0; overflow-wrap:anywhere; } #status.bad { color:var(--gap); }
   @media (max-width:30rem) { .said { grid-template-columns:1fr; gap:.1rem; } .said dd { margin-bottom:.4rem; } }
@@ -119,33 +145,31 @@
 <dl class="facts">
   <dt>Under review</dt><dd>[What exactly was looked at: its version and date.]</dd>
   <dt>Asked for</dt><dd>[What was asked for, in the reviewer's own words where they exist. One or two sentences.]</dd>
-  <dt>Level</dt><dd>[Outcome, design, details: the ones the reviewer chose.]</dd>
-  <dt>Budget</dt><dd>[N minutes: N stops to answer, then N findings to skim.]</dd>
+  <dt>You asked to check</dt><dd>[The checks they named, each a stop below. Remove this line if they named none.]</dd>
+  <dt>Depth</dt><dd>[The level and time they gave, or: outcome first, about ten minutes. N stops, then N findings to skim.]</dd>
 </dl>
 
 <h2>What was made</h2>
-<p class="dim">[How many parts, and what is new or changed.] Mark any part you want a closer look at.</p>
+<p class="dim">[How many parts, and what is new or changed.] One tap per part: looks right, look closer, or can't judge this.</p>
 <section class="parts" data-id="overview">
-  <article class="part">
+  <article class="part" data-part="p1">
     <div class="slot">[A picture of this part: the real screen, plot or output. An &lt;img&gt; goes here.]</div>
     <h3>[Part name]</h3>
     <p>[What this part is, in one or two sentences. Say whether it is new or changed.]</p>
-    <div class="marks"><label class="chip"><input type="radio" name="overview.part-1" value="closer" data-label="[Part name]: look closer"> Look closer</label><label class="chip"><input type="radio" name="overview.part-1" value="fine" data-label="[Part name]: no concern"> No concern</label></div>
   </article>
-  <article class="part">
+  <article class="part" data-part="p2">
     <div class="big">[N of M]<small>[the one number that sizes this part, when no picture exists]</small></div>
     <h3>[Part name]</h3>
     <p>[What this part is, in one or two sentences.]</p>
-    <div class="marks"><label class="chip"><input type="radio" name="overview.part-2" value="closer" data-label="[Part name]: look closer"> Look closer</label><label class="chip"><input type="radio" name="overview.part-2" value="fine" data-label="[Part name]: no concern"> No concern</label></div>
   </article>
 </section>
 
 <h2>[N] stops</h2>
-<p class="dim">Each one says what was asked and what is there, then asks one thing about you. Put your reasons in the note.</p>
+<p class="dim">Each one tells you one thing about the work and asks one thing about you. Put your reasons in the note.</p>
 
 <!-- Form 1. Is this what you meant? A quick mark. The most common form. -->
-<section class="stop" data-id="s1">
-  <p class="tag">Stop 1 · [Level] · Is this what you meant?</p>
+<section class="stop" data-id="s1" data-part="p1">
+  <p class="tag">Stop 1 · [Part name] · Is this what you meant?</p>
   <h3>[The finding, stated as a fact, in one line.]</h3>
   <dl class="said">
     <dt>Asked for</dt><dd>[Their own words, quoted.]</dd>
@@ -167,8 +191,8 @@
 </section>
 
 <!-- Form 2. Which did you mean? Two or three plain meanings, with no reasons attached. -->
-<section class="stop" data-id="s2">
-  <p class="tag">Stop 2 · [Level] · Is this what you meant?</p>
+<section class="stop" data-id="s2" data-part="p1">
+  <p class="tag">Stop 2 · [Part name] · Is this what you meant?</p>
   <h3>[The finding, stated as a fact, in one line.]</h3>
   <dl class="said">
     <dt>Asked for</dt><dd>[Their own words, quoted. Words that can be read two ways.]</dd>
@@ -189,9 +213,9 @@
   </details>
 </section>
 
-<!-- Form 3. Guess first. Rare: only for a size, a count or a time they have a feel for. The guess locks. -->
-<section class="stop" data-id="s3">
-  <p class="tag">Stop 3 · [Level] · Is this what you pictured? · Guess first</p>
+<!-- Form 3. Guess first. Rare: only where hindsight would hide their expectation. The guess locks. -->
+<section class="stop" data-id="s3" data-part="p2">
+  <p class="tag">Stop 3 · [Part name] · Is this what you pictured? · Guess first</p>
   <h3>[The subject, named without giving the result away.]</h3>
   <dl class="said">
     <dt>Asked for</dt><dd>[Their own words, quoted.]</dd>
@@ -221,8 +245,8 @@
 </section>
 
 <!-- Form 4. Does this look right? Their knowledge of the field judges a result or a check. -->
-<section class="stop" data-id="s4">
-  <p class="tag">Stop 4 · [Level] · Does this look right?</p>
+<section class="stop" data-id="s4" data-part="p2">
+  <p class="tag">Stop 4 · [Part name] · Does this look right?</p>
   <h3>[The finding, stated as a fact, in one line.]</h3>
   <dl class="said">
     <dt>Asked for</dt><dd>[Their own words, or the claim the work makes.]</dd>
@@ -243,10 +267,10 @@
 </section>
 
 <h2>[N] more findings</h2>
-<p class="dim">Places where the work differs from the words of the request. They need no answer. Tick any you want as a stop in a second round.</p>
+<p class="dim">Places where the work differs from the words of the request, under their part. They need no answer. Tick any you want as a stop in a second round.</p>
 <ul class="findings" data-id="findings">
-  <li><span class="where">[Part name]</span><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span><label class="chip"><input type="checkbox" name="findings.f1" value="closer" data-label="[The finding, in a few words]"> Look closer</label></li>
-  <li><span class="where">[Part name]</span><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span><label class="chip"><input type="checkbox" name="findings.f2" value="closer" data-label="[The finding, in a few words]"> Look closer</label></li>
+  <li data-part="p1"><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span></li>
+  <li data-part="p2"><span><b>[The finding in one sentence.]</b> [One or two sentences on what is there.]</span></li>
 </ul>
 
 <h2>Not looked at</h2>
@@ -272,6 +296,18 @@
 </div>
 
 <!-- Keep everything from here down. -->
+<h2>What your review covers</h2>
+<div class="panel">
+  <p id="coverage-sum"></p>
+  <div id="coverage" class="cov"></div>
+  <div class="legend">
+    <span><i class="dot judged"></i> judged</span><span><i class="dot cannot"></i> could not tell</span>
+    <span><i class="dot maker"></i> left to the maker</span><span><i class="dot"></i> not answered</span>
+    <span><i class="dot mark judged"></i> the part's mark</span>
+  </div>
+  <p class="dim">One row per part, one dot per stop. This is what your review will say it covered. Parts you could not judge are not a mark against you: they need better context or another reviewer.</p>
+</div>
+
 <h2>Hand back</h2>
 <div class="panel">
   <p>Your answers are saved as you give them, on the machine that serves this page. <b>Save</b> does it at once and shows where the file is. Press <b>Send</b> when you are done, and tell the agent you have sent. You can stop part way and come back: what you did not answer counts as not reviewed.</p>
@@ -290,20 +326,60 @@
   const key = 'guided-review:' + meta.review;
   const status = document.getElementById('status');
   const recordBox = document.getElementById('record');
+  const parts = $$('.part[data-part]').map(p => ({ id: p.dataset.part, el: p, name: ((p.querySelector('h3') || {}).textContent || p.dataset.part).trim() }));
+  const partName = id => (parts.find(p => p.id === id) || { name: id || 'Other' }).name;
   let receiver = null;      // null: not tried yet; false: none reached; otherwise the receiver's last reply
   let sent = false, dirty = false, notice = '', timer;
 
-  // Every stop gets the same ways out, "go deeper" and a note.
+  const chip = (type, name, value, text, label) => {
+    const l = document.createElement('label'), i = document.createElement('input');
+    l.className = 'chip'; i.type = type; i.name = name; i.value = value;
+    if (label) i.dataset.label = label;
+    l.append(i, ' ' + text);
+    return l;
+  };
+  const row = (lead, ...items) => {
+    const d = document.createElement('div');
+    if (lead) { const s = document.createElement('span'); s.className = 'lead'; s.textContent = lead; d.append(s); }
+    d.append(...items);
+    return d;
+  };
+
+  // Every part gets the same three marks: the review's breadth.
+  for (const p of parts) {
+    const marks = row(null,
+      chip('radio', 'overview.' + p.id, 'right', 'Looks right', p.name + ': looks right'),
+      chip('radio', 'overview.' + p.id, 'closer', 'Look closer', p.name + ': look closer'),
+      chip('radio', 'overview.' + p.id, 'cannot', "Can't judge this", p.name + ": can't judge"));
+    marks.className = 'marks';
+    p.el.append(marks);
+  }
+
+  // Every stop gets the same signals, ways out, "go deeper" and a note.
   for (const stop of $$('.stop')) {
-    const id = stop.dataset.id;
-    const extras = document.createElement('div');
+    const id = stop.dataset.id, extras = document.createElement('div');
     extras.className = 'extras';
-    extras.innerHTML =
-      `<label class="chip"><input type="checkbox" name="${id}.out" value="cannot-tell"> I cannot tell from this</label>
-       <label class="chip"><input type="checkbox" name="${id}.out" value="makers-call"> Not my concern</label>
-       <label class="chip"><input type="checkbox" name="${id}.deeper" value="yes"> Go deeper</label>
-       <textarea name="${id}.note" rows="1" placeholder="Note (optional): your reason, or what you meant" aria-label="Note for this stop"></textarea>`;
-    stop.insertBefore(extras, stop.querySelector(':scope > details.ev'));
+    if (!stop.querySelector('.guess'))
+      extras.append(row('Before this page:', chip('checkbox', id + '.knew', 'knew', 'I knew this'), chip('checkbox', id + '.knew', 'news', 'News to me')));
+    extras.append(row(null, chip('checkbox', id + '.out', 'cannot-tell', 'I cannot tell from this'),
+                            chip('checkbox', id + '.out', 'makers-call', 'Not my concern'),
+                            chip('checkbox', id + '.deeper', 'yes', 'Go deeper')));
+    const note = document.createElement('textarea');
+    note.name = id + '.note'; note.rows = 1; note.placeholder = 'Note (optional): your reason, or what you meant'; note.setAttribute('aria-label', 'Note for this stop');
+    extras.append(note);
+    stop.insertBefore(extras, stop.querySelector(':scope > details.ev'));   // after the reveal on a guess-first stop
+  }
+
+  // Every finding shows its part and gets a tick; findings are kept in the order of the parts.
+  const list = document.querySelector('.findings');
+  if (list) {
+    const items = $$(':scope > li', list), order = id => { const i = parts.findIndex(p => p.id === id); return i < 0 ? parts.length : i; };
+    items.sort((a, b) => order(a.dataset.part) - order(b.dataset.part)).forEach((li, n) => {
+      if (!li.querySelector('.where')) { const w = document.createElement('span'); w.className = 'where'; w.textContent = partName(li.dataset.part); li.prepend(w); }
+      const b = li.querySelector('b');
+      li.append(chip('checkbox', 'findings.f' + (n + 1), 'closer', 'Look closer', (b ? b.textContent : li.textContent).trim().slice(0, 90)));
+      list.append(li);
+    });
   }
 
   function reveal(stop) {
@@ -311,6 +387,36 @@
     stop.querySelector('.show').hidden = true;
     $$('.guess input', stop).forEach(i => i.disabled = true);
   }
+
+  // What the answers cover, part by part. A count of where judgment reached, never a score.
+  function coverage(answers) {
+    const picked = (id, name) => ((answers[id] || {}).picked || {})[name] || [];
+    return parts.map(p => {
+      const mark = (picked('overview', 'overview.' + p.id)[0] || {}).value || null;
+      const stops = {};
+      let closer = mark === 'closer';
+      for (const s of $$('.stop').filter(s => s.dataset.part === p.id)) {
+        const id = s.dataset.id, a = answers[id], out = (picked(id, id + '.out')[0] || {}).value;
+        stops[id] = !a ? 'open' : out === 'cannot-tell' ? 'cannot' : out === 'makers-call' ? 'maker' : (a.picked[id] || a.note) ? 'judged' : 'open';
+        if (a && a.deeper) closer = true;
+      }
+      if ($$('.findings li').some(li => li.dataset.part === p.id && li.querySelector('input:checked'))) closer = true;
+      const v = Object.values(stops), n = x => v.filter(y => y === x).length;
+      const cannot = n('cannot') > 0 || mark === 'cannot';
+      const state = n('judged') && (cannot || n('open')) ? 'partly' : n('judged') ? 'judged' : cannot ? 'cannot'
+                  : mark ? 'glanced' : v.length && n('maker') === v.length ? 'maker' : 'open';
+      return { part: p.id, name: p.name, state, mark, stops, closer };
+    });
+  }
+  const WORDS = { judged: 'Judged', partly: 'Partly judged', cannot: 'Could not judge', glanced: 'Glanced', maker: 'Left to the maker', open: 'Not reached' };
+  const MARKS = { right: 'looks right', closer: 'look closer', cannot: "can't judge" };
+  const describe = c => {
+    const v = Object.values(c.stops), bits = [WORDS[c.state]];
+    if (v.length) bits.push(v.filter(x => x === 'judged').length + ' of ' + v.length + (v.length === 1 ? ' stop' : ' stops') + ' judged');
+    if (c.mark) bits.push('marked ' + MARKS[c.mark]);
+    if (c.closer) bits.push('closer look asked');
+    return bits.join(' · ');
+  };
 
   function collect() {
     const answers = {};
@@ -320,13 +426,13 @@
         if (i.name === id + '.deeper') a.deeper = true;
         else (a.picked[i.name] = a.picked[i.name] || []).push({ value: i.value, label: i.dataset.label || i.closest('label').textContent.trim() });
       }
-      const note = el.querySelector('.extras textarea');
+      const note = $$('textarea', el).find(t => t.name === id + '.note');
       if (note && note.value.trim()) a.note = note.value.trim();
       const rev = el.querySelector('.reveal');
       if (rev && !rev.hidden) a.revealed = true;
       if (Object.keys(a.picked).length || a.note || a.deeper) answers[id] = a;
     }
-    return { review: meta.review, version: meta.version, saved_at: new Date().toISOString(), done: sent, answers };
+    return { review: meta.review, version: meta.version, saved_at: new Date().toISOString(), done: sent, answers, coverage: coverage(answers) };
   }
 
   function restore(rec) {
@@ -337,7 +443,7 @@
       const tick = (name, value) => { const i = $$('input', el).find(i => i.name === name && i.value === value); if (i) i.checked = true; };
       for (const [name, picks] of Object.entries(a.picked || {})) picks.forEach(p => tick(name, p.value));
       if (a.deeper) tick(id + '.deeper', 'yes');
-      const note = el.querySelector('.extras textarea');
+      const note = $$('textarea', el).find(t => t.name === id + '.note');
       if (a.note && note) note.value = a.note;
       if (a.revealed && el.querySelector('.reveal')) reveal(el);
     }
@@ -355,7 +461,25 @@
       if (a.deeper) lines.push('  go deeper: yes');
       if (a.note) lines.push('  note: ' + a.note);
     }
+    lines.push('', 'coverage:');
+    for (const c of rec.coverage) lines.push('  ' + c.name + ': ' + describe(c));
     return lines.join('\n');
+  }
+
+  function renderCoverage(cov) {
+    const box = document.getElementById('coverage');
+    box.replaceChildren(...cov.map(c => {
+      const d = document.createElement('div'), name = document.createElement('span'), dots = document.createElement('span'), st = document.createElement('span');
+      d.dataset.state = c.state; name.className = 'name'; name.textContent = c.name; dots.className = 'dots'; st.className = 'state'; st.textContent = describe(c);
+      const m = document.createElement('i'); m.className = 'dot mark ' + ({ right: 'judged', closer: '', cannot: 'cannot' }[c.mark] || ''); m.title = c.mark ? 'marked ' + MARKS[c.mark] : 'not marked';
+      dots.append(m, ...Object.entries(c.stops).map(([id, s]) => { const i = document.createElement('i'); i.className = 'dot ' + s; i.title = id + ': ' + s; return i; }));
+      d.append(name, dots, st);
+      return d;
+    }));
+    const count = s => cov.filter(c => c.state === s).length, said = [];
+    for (const [s, w] of [['judged', 'judged'], ['partly', 'partly judged'], ['glanced', 'glanced at'], ['cannot', 'could not judge'], ['maker', 'left to the maker'], ['open', 'not reached yet']])
+      if (count(s)) said.push(count(s) + ' ' + w);
+    document.getElementById('coverage-sum').textContent = 'Of ' + cov.length + ' parts: ' + said.join(', ') + '.';
   }
 
   function render() {
@@ -365,12 +489,14 @@
     }
     const rec = collect(), stops = $$('.stop');
     const answered = stops.filter(s => rec.answers[s.dataset.id]).length;
+    const reached = rec.coverage.filter(c => c.state !== 'open').length;
     recordBox.value = asText(rec);
+    renderCoverage(rec.coverage);
     let where = '';
     if (receiver === false) where = 'No receiver reached: your answers are only in this browser. Copy them and give them to the agent.';
     else if (dirty) where = 'Saving…';
     else if (receiver) where = (sent ? 'Sent, and saved ' : 'Saved as a draft ') + 'on ' + receiver.host + ' in ' + receiver.file + ', ' + new Date(receiver.at).toLocaleTimeString() + '.';
-    status.textContent = answered + ' of ' + stops.length + ' stops answered. ' + (notice || where);
+    status.textContent = answered + ' of ' + stops.length + ' stops · ' + reached + ' of ' + parts.length + ' parts covered. ' + (notice || where);
     status.className = receiver === false ? 'bad' : '';
     notice = '';
   }
@@ -392,12 +518,12 @@
 
   document.addEventListener('change', e => {
     const i = e.target, stop = i.closest && i.closest('.stop');
-    if (stop && i.matches('input') && i.checked) {          // a way out replaces the answer, and an answer replaces a way out
-      const out = stop.dataset.id + '.out', deeper = stop.dataset.id + '.deeper';
-      for (const o of $$('input', stop)) {
-        if (o === i || o.disabled || o.name === deeper) continue;
-        if (i.name === out || (i.name !== deeper && o.name === out)) o.checked = false;
-      }
+    if (stop && i.matches('input') && i.checked) {
+      const id = stop.dataset.id, out = id + '.out', knew = id + '.knew';
+      const group = name => $$('input', stop).filter(o => o.name === name && o !== i);
+      if (i.name === out || i.name === knew) group(i.name).forEach(o => o.checked = false);   // one of each
+      if (i.name === out) group(id).forEach(o => o.checked = false);                           // a way out replaces the answer
+      if (i.name === id) group(out).forEach(o => o.checked = false);                           // an answer replaces a way out
     }
     if (i.matches && i.matches('input')) changed();
   });

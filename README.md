@@ -1,21 +1,31 @@
 # guided-review
 
-A skill for reviewing finished work without reading all of it. The agent shows what was
-made, tells the reviewer the few places where it differs from what they asked for, and
-asks one short question at each. It then writes the review from those answers for the
-reviewer to approve.
+A skill for reviewing finished work you did not watch being made. Anyone can put the same
+model on the same work; what makes one review better than another is the reviewer. So the
+agent does the reading and checking, shows every part of the work, tells the reviewer where
+it differs from what they asked for, and asks only what they alone can answer: what they
+meant, what they pictured, whether it looks right. Their answers become a review that
+states what it covered, part by part: judged, glanced, could not judge, left to the maker,
+or not reached.
 
-The skill gives directions: how to settle the level (outcome, design, details), what makes
-a stop worth a person's minute, which ways of taking input to offer, and how to turn
-answers into a review. A review looks back: what to do next is listed, never asked. The
-directions name no product or host on purpose, so they stay true as those change.
+Six principles carry it:
+
+1. The reviewer is the instrument.
+2. Tell what you can check; ask only what they alone hold.
+3. Every part gets a glance, a few get a stop.
+4. Read their grasp from their answers, part by part; never test them.
+5. The review says what it covered; never score the person.
+6. Start with nothing asked.
+
+A review looks back: what to do next is listed, never asked. The directions name no product
+or host on purpose, so they stay true as those change.
 
 ## What is in the folder
 
 | File | What it is |
 |---|---|
 | `SKILL.md` | The directions |
-| `assets/review-page.html` | A wireframe of a review page: every part in its place, each slot labelled, no content. Its inputs, saving and copying work. Copy it and fill the slots. |
+| `assets/review-page.html` | A wireframe of a review page: every part in its place, each slot labelled, no content. Its marks, saving, copying and the coverage view work. Copy it and fill the slots. |
 | `scripts/serve.py` | A small server that serves one review folder and saves the answers to a file. Python standard library only. |
 | `evals/` | The test definition and a script that checks a page's form. For people changing the skill. |
 
@@ -44,13 +54,14 @@ From another machine, forward the port first:
 ssh -L 8765:127.0.0.1:8765 <the host>
 ```
 
-Answer a few stops. The bar at the bottom shows the host and file the answers were saved
-to: `/tmp/review-example/answers.json`. Send marks them done.
+Answer a few stops and mark a part. The coverage view near the end shows, part by part, what
+the answers cover so far. The bar at the bottom shows the host and file the answers were
+saved to: `/tmp/review-example/answers.json`. Send marks them done.
 
 ## How answers travel
 
 The page saves every change to the server, which writes `answers.json` in the review
-folder and appends each save to `answers.log`. The server listens on its own machine only
+folder, coverage included, and appends each save to `answers.log`. The server listens on its own machine only
 and sends nothing anywhere else. If the page cannot reach it, the page says so and shows
 the answers as text to copy.
 
@@ -77,5 +88,6 @@ person to judge.
 
 Draft. The server and the wireframe are tested, with a headless browser for the page.
 Two reviews of real work shaped the directions. The first asked mostly about next steps.
-The second quizzed the reviewer on findings the agent already knew. The directions now
-say: tell first, ask second.
+The second quizzed the reviewer on findings the agent already knew. Then came: tell first,
+ask second. The latest round adds parts and coverage, so that a review says how much of
+the work the reviewer's judgment reached.
